@@ -495,23 +495,37 @@ sub processTargetPath
     # CHIP_UNIT attribute because, those targets are not pervasive target
     if ( index( $lastNode->compatible, "chip-ocmb") != -1 )
     {
-        # To get omi target CHIP_UNIT attribute, need to get omi target id.
-        # So, using respective given target AFFINITY_PATH to get omi target id.
-        if (exists ${$lastNode->attributeList}{"AFFINITY_PATH"})
+        #get the number at the end of the physical path and use that as the index
+        if (exists ${$lastNode->attributeList}{"PHYS_PATH"})
         {
-            my $affinityPath = ${$lastNode->attributeList}{"AFFINITY_PATH"}->value;
-            my $omiTgtId = substr( substr($affinityPath, index($affinityPath, ':') + 1),
-                                   0, index($affinityPath, 'omi-') - 4);
-            $omiTgtId =~ s/[-\/]//g;
-            $lastNode->index(${$mrwTargetList{$omiTgtId}->targetAttrList}{"CHIP_UNIT"}->value);
+            my $input = ${$lastNode->attributeList}{"PHYS_PATH"}->value;
+            my $index = 0;
+            if ($input =~ /(\d+)$/) 
+            {
+                $index = $1;
+            }
+            $lastNode->index($index);
         }
-
         # Changing node name for ocmb target as per pdbg expectation.
         # Removing "_chip" from ocmb target element value from PHYS_PATH value.
         my $nodeName = $lastNode->nodeName;
         $nodeName =~ s/_chip//g;
         $lastNode->nodeName($nodeName);
-
+    }
+    #for the dimms also use the index same as its position
+    elsif (index ($lastNode->compatible, "ddr") != -1)
+    {
+        #get the number at the end of the physical path and use that as the index
+        if (exists ${$lastNode->attributeList}{"PHYS_PATH"})
+        {
+            my $input = ${$lastNode->attributeList}{"PHYS_PATH"}->value;
+            my $index = 0;
+            if ($input =~ /(\d+)$/) 
+            {
+                $index = $1;
+            }
+            $lastNode->index($index);
+        }
     }
     elsif ($lastNode->compatible eq "unit-fsi")
     {
@@ -541,8 +555,7 @@ sub processTargetPath
     {
         $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
     }
-    elsif ( (index ($lastNode->compatible, "unit-ddr") != -1) or
-          (index ($lastNode->compatible, "unit-mem_port") != -1) )
+    elsif (index ($lastNode->compatible, "unit-mem_port") != -1)
     {
         $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
     }

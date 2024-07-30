@@ -843,4 +843,15 @@
             </string>
         </simpleType>
     </attribute>
+    <attribute>
+        <description>Index of the inventory item</description>
+        <id>INVENTORY_INDEX</id>
+        <persistency>non-volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <uint8_t>
+                <default>0</default>
+            </uint8_t>
+        </simpleType>
+    </attribute>
 </attributes>

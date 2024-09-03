@@ -15,6 +15,9 @@
         <attribute>
             <id>FAPI_NAME</id>
         </attribute>
+        <attribute>
+            <id>INVENTORY_INDEX</id>
+        </attribute>
         <id>base</id>
     </targetType>
     <targetType>

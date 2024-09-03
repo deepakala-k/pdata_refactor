@@ -495,37 +495,20 @@ sub processTargetPath
     # CHIP_UNIT attribute because, those targets are not pervasive target
     if ( index( $lastNode->compatible, "chip-ocmb") != -1 )
     {
-        #get the number at the end of the physical path and use that as the index
-        if (exists ${$lastNode->attributeList}{"PHYS_PATH"})
+        if (exists ${$lastNode->attributeList}{"AFFINITY_PATH"})
         {
-            my $input = ${$lastNode->attributeList}{"PHYS_PATH"}->value;
-            my $index = 0;
-            if ($input =~ /(\d+)$/) 
-            {
-                $index = $1;
-            }
-            $lastNode->index($index);
+            my $affinityPath = ${$lastNode->attributeList}{"AFFINITY_PATH"}->value;
+            my $omiTgtId = substr( substr($affinityPath, index($affinityPath, ':') + 1),
+                                   0, index($affinityPath, 'omi-') - 4);
+            $omiTgtId =~ s/[-\/]//g;
+            $lastNode->index(${$mrwTargetList{$omiTgtId}->targetAttrList}{"CHIP_UNIT"}->value);
         }
+
         # Changing node name for ocmb target as per pdbg expectation.
         # Removing "_chip" from ocmb target element value from PHYS_PATH value.
         my $nodeName = $lastNode->nodeName;
         $nodeName =~ s/_chip//g;
         $lastNode->nodeName($nodeName);
-    }
-    #for the dimms also use the index same as its position
-    elsif (index ($lastNode->compatible, "ddr") != -1)
-    {
-        #get the number at the end of the physical path and use that as the index
-        if (exists ${$lastNode->attributeList}{"PHYS_PATH"})
-        {
-            my $input = ${$lastNode->attributeList}{"PHYS_PATH"}->value;
-            my $index = 0;
-            if ($input =~ /(\d+)$/) 
-            {
-                $index = $1;
-            }
-            $lastNode->index($index);
-        }
     }
     elsif ($lastNode->compatible eq "unit-fsi")
     {
@@ -552,6 +535,10 @@ sub processTargetPath
         $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
     }
     elsif ($lastNode->compatible eq "chip-vreg-generic")
+    {
+        $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
+    }
+    elsif (index ($lastNode->compatible, "ddr") != -1)
     {
         $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
     }
@@ -726,6 +713,14 @@ sub addTargetDataIntoDTSFile
     if (exists $attributeList{"PHYS_DEV_PATH"})
     {
         $attributeList{"PHYS_DEV_PATH"}->value($attributeList{"PHYS_PATH"}->value);
+
+        my $physicalPathValue = $attributeList{"PHYS_PATH"}->value;
+        my $inventoryIndex = 0;
+        if ($physicalPathValue =~ /(\d+)$/)
+        {
+            $inventoryIndex = $1;
+        }
+        $attributeList{"INVENTORY_INDEX"}->value($inventoryIndex);
     }
     if (exists $attributeList{"PHYS_BIN_PATH"})
     {

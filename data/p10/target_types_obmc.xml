@@ -15,9 +15,6 @@
         <attribute>
             <id>FAPI_NAME</id>
         </attribute>
-        <attribute>
-            <id>INVENTORY_INDEX</id>
-        </attribute>
         <id>base</id>
     </targetType>
     <targetType>
@@ -60,6 +57,9 @@
         </attribute>
         <attribute>
             <id>EQ_GARD</id>
+        </attribute>
+        <attribute>
+            <id>INVENTORY_INDEX</id>
         </attribute>
         <id>chip-processor</id>
         <parent>chip</parent>
@@ -188,6 +188,9 @@
     </targetType>
     <targetType>
         <id>chip-ocmb</id>
+        <attribute>
+            <id>INVENTORY_INDEX</id>
+        </attribute>
         <parent>chip</parent>
     </targetType>
     <targetType>

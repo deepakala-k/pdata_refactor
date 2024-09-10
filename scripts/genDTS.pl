@@ -715,12 +715,15 @@ sub addTargetDataIntoDTSFile
         $attributeList{"PHYS_DEV_PATH"}->value($attributeList{"PHYS_PATH"}->value);
 
         my $physicalPathValue = $attributeList{"PHYS_PATH"}->value;
-        my $inventoryIndex = 0;
-        if ($physicalPathValue =~ /(\d+)$/)
+        if (exists $attributeList{"INVENTORY_INDEX"})
         {
-            $inventoryIndex = $1;
+          my $inventoryIndex = 0;
+          if ($physicalPathValue =~ /(\d+)$/)
+          {
+              $inventoryIndex = $1;
+          }
+          $attributeList{"INVENTORY_INDEX"}->value($inventoryIndex);
         }
-        $attributeList{"INVENTORY_INDEX"}->value($inventoryIndex);
     }
     if (exists $attributeList{"PHYS_BIN_PATH"})
     {

@@ -74,6 +74,15 @@
         <attribute>
             <id>LOCATION_CODE</id>
         </attribute>
+        <attribute>
+            <id>KERNEL_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>SBEFIFO_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>FSI_DEVICE_PATH</id>
+        </attribute>
         <id>chip</id>
         <parent>base</parent>
     </targetType>

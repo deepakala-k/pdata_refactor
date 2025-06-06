@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 
 #################################################################################
 #
@@ -18,6 +18,8 @@ use strict;
 my $currDir = dirname($0);
 my $topSrcDir = dirname($currDir);
 require "$currDir/parseIntermediateXMLUtils.pl";
+require "$currDir/createDevicePaths.pl";
+
 
 # Global variables list begin
 
@@ -203,6 +205,22 @@ sub mergeFAPITargetAttrsIntoMRWIfFound
     }
 }
 
+sub insertGivenTargetInbetween {
+    my ($finalPath, $targetBase, $targetToBeAdded) = @_;  # Capture arguments: path and target base string
+
+    # Match the targetBase followed by an optional dash and digits, ensuring it ends with a slash
+    if ($finalPath =~ /(.*?($targetBase(?:-\d+)?\/))/) {
+        # Capture the part of the string including "proc-xx/"
+        my $prefix = $1;
+        # Capture the rest of the string after the match
+        my $remainingPath = $';
+        # Insert "targetToBeAdded" after the match
+        $finalPath = $prefix . $targetToBeAdded. "/" . $remainingPath;
+    }
+
+    return $finalPath;  # Return the modified path
+}
+
 sub prepareDeviceTreeHierarchy
 {
     my %nonPervTgtsList;
@@ -297,27 +315,15 @@ sub prepareDeviceTreeHierarchy
                 next;
             }
             my $chipletID = ${$mrwTargetList{$MRWTargetID}->targetAttrList}{'CHIPLET_ID'}->value;
-            $finalPath = substr($physPath, 0, index($physPath, 'proc') + 7)."perv-".hex($chipletID).substr($physPath, index($physPath, 'proc') + 6);
+            my $target = "proc";
+            $finalPath = insertGivenTargetInbetween($finalPath, $target, "perv-".hex($chipletID));
         }
 
-        # If target path is contain proc then add pib target after proc target path
-        # for scom address translation as per pdbg expectation
-        # TODO: Index hard code value (7/6) for proc path need to revisit, it will mess if proc sequence id more than one digit
-        if( ( index($finalPath, "proc") != -1 )  and ( index($mrwTargetList{$MRWTargetID}->targetType, "chip-processor") == -1 ) )
-        {
-            $finalPath = substr($finalPath, 0, index($finalPath, 'proc') + 7)."pib".substr($finalPath, index($finalPath, 'proc') + 6, length($finalPath) - ( index($finalPath, 'proc') + 6) ) ;
-        }
         # Getting path value alone by ignoring "physical:"
         my @hash = split(/\//, substr($finalPath, index($finalPath, ':') + 1));
         processTargetPath($MRWTargetID, \@hash);
         # Create omi pervasive path list for use to dimm. ocmb and memport targets
         $omiPervPath{$MRWTargetID} = $finalPath if index( $mrwTargetList{$MRWTargetID}->targetType, "unit-omi") != -1;
-
-        # Add FSI target manually under proc target if MRW target is chip-processor.
-        addFSITarget($MRWTargetID, $finalPath) if index($mrwTargetList{$MRWTargetID}->targetType, "chip-processor") != -1;
-
-        # Add PIB target manually under proc target if MRW target is chip-processor.
-        addPIBTarget($MRWTargetID, $finalPath) if index($mrwTargetList{$MRWTargetID}->targetType, "chip-processor") != -1;
 
         # Add thread target manually under core target as per pdbg expectation for
         # register access
@@ -326,40 +332,6 @@ sub prepareDeviceTreeHierarchy
 
     # Prepare device tree hierarchy for non pervasive targets which need to come under proc/.../omi target hierarchy
     prepareDeviceTreeHierarchyForNonPervTgts(\%nonPervTgtsList, \%omiPervPath);
-}
-
-sub addFSITarget
-{
-    my $procTgtId = $_[0];
-    my $procPath = $_[1];
-
-    my $fsiIndex = substr($procPath, index($procPath, 'proc-') + 5);
-    # Pdbg did not expect index along with node name
-    my $fsiPath = $procPath."/fsi";
-    my $fsiTgtId = $procTgtId."fsi".$fsiIndex;
-    my @hash = split(/\//, substr($fsiPath, index($fsiPath, ':') + 1));
-    my $fsiTgt = MRWTarget->new();
-    $fsiTgt->targetType("unit-fsi");
-    $fsiTgt->targetAttrList({});
-    $mrwTargetList{$fsiTgtId} = $fsiTgt;
-    processTargetPath($fsiTgtId, \@hash);
-}
-
-sub addPIBTarget
-{
-    my $procTgtId = $_[0];
-    my $procPath = $_[1];
-
-    my $pibIndex = substr($procPath, index($procPath, 'proc-') + 5);
-    # Pdbg did not expect index along with node name
-    my $pibPath = $procPath."/pib";
-    my $pibTgtId = $procTgtId."pib".$pibIndex;
-    my @hash = split(/\//, substr($pibPath, index($pibPath, ':') + 1));
-    my $pibTgt = MRWTarget->new();
-    $pibTgt->targetType("unit-pib");
-    $pibTgt->targetAttrList({});
-    $mrwTargetList{$pibTgtId} = $pibTgt;
-    processTargetPath($pibTgtId, \@hash);
 }
 
 sub addThreadTarget
@@ -527,16 +499,6 @@ sub processTargetPath
             $lastNode->index($index);
         }
     }
-    elsif ($lastNode->compatible eq "unit-fsi")
-    {
-        my $index = substr($TargetID, index($TargetID, "fsi") + 3);
-        $lastNode->index($index);
-    }
-    elsif ($lastNode->compatible eq "unit-pib")
-    {
-        my $index = substr($TargetID, index($TargetID, "pib") + 3);
-        $lastNode->index($index);
-    }
     elsif ($lastNode->compatible eq "chip-adc")
     {
         my $nodeName = $lastNode->nodeName;
@@ -637,15 +599,9 @@ sub addNodesIntoDTSFile
         }
 
         # Don't add compatible property for below targets as per pdbg expectaion
-        if ( $key =~ m/sys/ or $key =~ m/node/ or $key =~ m/fsi/ or
-             $key =~ m/pib/ or $key =~ m/^i2c-/ )
-        {
-            $addCompProp = 0;
-        }
-
-        # Don't add index property for below targets as per pdbg expectaion
         if ( $key =~ m/sys/ or $key =~ m/node/ or $key =~ m/^i2c-/ )
         {
+            $addCompProp = 0;
             $addIndexProp = 0;
         }
 
@@ -727,6 +683,35 @@ sub addTargetDataIntoDTSFile
     {
         $attributeList{"PHYS_DEV_PATH"}->value($attributeList{"PHYS_PATH"}->value);
     }
+
+    my $device_paths;
+    if (index($devTreeNode->compatible, "chip-processor") != -1)
+    {
+        $device_paths = CreateProcModuleDevicePaths($devTreeNode->index);
+    }
+    elsif (index($devTreeNode->compatible, "chip-ocmb") != -1)
+    {
+        my $fapi_pos = $attributeList{"FAPI_POS"}->value();  
+        $device_paths = CreateOCMBDevicePaths($inXMLFile, $fapi_pos, $devTreeNode->index);
+    }
+
+    #The device path is populated only for OCMB and proc targets
+    if ($device_paths ne '')
+    {
+      if (exists $attributeList{"SBEFIFO_DEVICE_PATH"})
+      {
+          $attributeList{"SBEFIFO_DEVICE_PATH"}->value($device_paths->{sbefifo_device_path});
+      }
+      if (exists $attributeList{"KERNEL_DEVICE_PATH"})
+      {
+          $attributeList{"KERNEL_DEVICE_PATH"}->value($device_paths->{kernel_device_path});
+      }
+      if (exists $attributeList{"FSI_DEVICE_PATH"})
+      {
+          $attributeList{"FSI_DEVICE_PATH"}->value($device_paths->{fsi_device_path});
+      }
+    }
+
     if (exists $attributeList{"PHYS_BIN_PATH"})
     {
         $attributeList{"PHYS_BIN_PATH"}->value(getBinaryFormatForPhysPath($attributeList{"PHYS_PATH"}->value));

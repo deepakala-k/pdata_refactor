@@ -661,6 +661,42 @@
         <readable></readable>
     </attribute>
 
+        <attribute>
+        <description>sbefifo device path</description>
+        <id>SBEFIFO_DEVICE_PATH</id>
+        <simpleType>
+            <string>
+                <sizeInclNull>120</sizeInclNull>
+            </string>
+        </simpleType>
+        <persistency>non-volatile</persistency>
+        <readable/>
+    </attribute>
+
+    <attribute>
+        <description>Kernel device path</description>
+        <id>KERNEL_DEVICE_PATH</id>
+        <simpleType>
+            <string>
+                <sizeInclNull>120</sizeInclNull>
+            </string>
+        </simpleType>
+        <persistency>non-volatile</persistency>
+        <readable/>
+    </attribute>
+
+    <attribute>
+        <description>FSI device path</description>
+        <id>FSI_DEVICE_PATH</id>
+        <simpleType>
+            <string>
+                <sizeInclNull>120</sizeInclNull>
+            </string>
+        </simpleType>
+        <persistency>non-volatile</persistency>
+        <readable/>
+    </attribute>
+
     <attribute>
         <description>Common name across FAPI environments
             chip target -&gt; pu:k0:n0:s0:p00

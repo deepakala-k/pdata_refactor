@@ -1,5 +1,28 @@
-#!/usr/bin/perl
-# SPDX-License-Identifier: Apache-2.0
+#! /usr/bin/perl
+# IBM_PROLOG_BEGIN_TAG
+# This is an automatically generated prolog.
+#
+# $Source: src/usr/targeting/common/processMrw.pl $
+#
+# OpenPOWER HostBoot Project
+#
+# Contributors Listed Below - COPYRIGHT 2015,2023
+# [+] International Business Machines Corp.
+#
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+# IBM_PROLOG_END_TAG
 
 ################################################################################
 # Libraries included
@@ -30,10 +53,12 @@ use lib dirname(abs_path($0));
 use Targets;
 use BusFruCallouts;
 
+use processMrw_bmc;
+
 ################################################################################
 # Define some global constants/variables
 ################################################################################
-# FSP global constants.  Used by file processMrw_fsp.pm
+# BMC global constants.  Used by file processMrw_bmc.pm
 our %hwsvmrw_plugins;
 
 # HB global constants
@@ -225,9 +250,8 @@ sub printUsage
     print <<EOF;
 $RealScript -x [XML filename] [OPTIONS]
 Options:
-        -build <hb | fsp | bmc> = hb  - process HB targets only (the default)
-                                  fsp - process FSP targets in addition to HB targets
-                                  bmc - process BMC targets in addition to HB targets
+        -build <hb | bmc> = hb  - process HB targets only (the default)
+                            bmc - process bmc targets in addition to HB targets
         -c <2N | w> = special configurations we want to run
                       2N - special 2 node config with extra ABUS links
                       w - Special SMP wrap config
@@ -311,12 +335,7 @@ sub main
     # many others.
     processTargets($targetObj);
 
-    if ($targetObj->{build} eq "fsp")
-    {
-        eval ("use processMrw_fsp; return 1;");
-        processMrw_fsp::return_plugins();
-    }
-    elsif ($targetObj->{build} eq "bmc")
+    if ($targetObj->{build} eq "bmc")
     {
         eval ("use processMrw_bmc; return 1;");
         processMrw_bmc::return_plugins();
@@ -333,11 +352,7 @@ sub main
     # connections for BMC systems.
     BusFruCallouts::setupBusses($targetObj);
 
-    if ($targetObj->{build} eq "fsp")
-    {
-        processMrw_fsp::loadFSP($targetObj);
-    }
-    elsif ($targetObj->{build} eq "bmc")
+    if ($targetObj->{build} eq "bmc")
     {
         processMrw_bmc::loadBMC($targetObj);
     }
@@ -429,7 +444,6 @@ sub getAndValidateCallerInputOptions
     # If caller used an invalid option for 'build' then state so and exit
     if ( ($build ne "")     &&
          ($build ne "hb")   &&
-         ($build ne "fsp")  &&
          ($build ne "bmc")  )
 
     {
@@ -644,11 +658,7 @@ sub postProcessTargets
         {
             postProcessProcessor($targetObj, $target);
 
-            if ($targetObj->{build} eq "fsp")
-            {
-                do_plugin("fsp_proc", $targetObj, $target);
-            }
-            elsif ($targetObj->{build} eq "bmc")
+            if ($targetObj->{build} eq "bmc")
             {
                 do_plugin("bmc_proc", $targetObj, $target);
             }

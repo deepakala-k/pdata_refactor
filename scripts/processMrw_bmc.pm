@@ -78,7 +78,6 @@ my %ocmb_device_path_method_registry = (
      my $bmc             = -1;
      my $tpm             = -1;
      my $oscrefclk       = -1;
-     my $oscrefclkendpt  = -1;
      my $mfrefclk        = -1;
      my $mfrefclkendpt   = -1;
      my $proc            = -1;
@@ -124,8 +123,6 @@ my %ocmb_device_path_method_registry = (
              $proc_instance_per_node = -1;
              $osrefclk_instance_per_node = -1;
  
-             #Add Location Code and RID for Membuf & DIMMs
-             processMembufDimms($targetObj, $target, $node);
          }
          #TODO: Removed control node, get confirmation
          elsif ($type eq "PROC")
@@ -134,7 +131,6 @@ my %ocmb_device_path_method_registry = (
              #proc instance based on node
              $proc_instance_per_node++;
              $proc_aff = "affinity:".$sys_phys."/node-$node"."/proc-$proc_instance_per_node";
-             print("deepa >>>>>>>>>>>>>>>>>>>>>> affinity path $proc_aff\n");
              $targetObj->setAttribute($target, "EC", "0x10");
              $targetObj->setAttribute($target, "CHIP_ID", "0x20D4");
  
@@ -166,14 +162,14 @@ my %ocmb_device_path_method_registry = (
              my $hwtopology = sprintf ("0x%04X", (($nodepos<<12) + ($proc<<8) + ($modulepos<<4)));
              $targetObj->setAttribute($target, "PROC_HW_TOPOLOGY", $hwtopology);
  
-             #Collect SCOM device_path
-             $targetObj->setAttribute($target, "SCOM_DEVICE_PATH", $device_path);
- 
-             #Collect SCAN device_path //TODO - not needed
-             #Collect MBOX device_path //TODO - not needed
- 
-             #Collect SBEFIFO device_path
-             $targetObj->setAttribute($target, "SBEFIFO_DEVICE_PATH", $device_path);
+             my $device_paths = CreateProcModuleDevicePaths($proc);
+
+             my %paths = %{$device_paths};
+
+             foreach my $key (sort keys %paths) {
+                 print "proc caller $key => $paths{$key}\n";
+                 $targetObj->setAttribute($target, $key, $paths{$key});
+             }
  
              #get and set the LOCATION_CODE
              $location_code = Parsers_Common::getLocationCode($targetObj, $target);
@@ -204,24 +200,55 @@ my %ocmb_device_path_method_registry = (
          #TODO: I2C_PARENT_PHYS_PATH was used in BMC earlier. Need to find if it is needed?
          elsif ($type eq "OSCREFCLK")
          {
-             $oscrefclk++;
-             $osrefclk_instance_per_node++;
-             $targetObj->{targeting}{SYS}[0]{NODES}[$node]{OSCREFCLK}[$osrefclk_instance_per_node]{KEY}= $target;
-             my $oscrefclk_phys = $node_phys . "/oscrefclk-$osrefclk_instance_per_node";
-             my $oscrefclk_aff  = $node_aff  . "/oscrefclk-$osrefclk_instance_per_node";
-             $targetObj->setHuid($target, $sys_pos, $node);
-             $targetObj->setAttribute($target, "PHYS_PATH",     $oscrefclk_phys);
-             $targetObj->setAttribute($target, "AFFINITY_PATH", $oscrefclk_aff );
-             $targetObj->setAttribute($target, "ORDINAL_ID",    $oscrefclk);
-             $targetObj->setAttribute($target, "CHIP_UNIT",     $pos);
- 
-             #get and set the LOCATION_CODE
-             $location_code = Parsers_Common::getLocationCode($targetObj, $target);
-             $targetObj->setAttribute($target, "LOCATION_CODE", $location_code);
- 
-             #TODO is it needed? 
-             iterateOverClkEndPnts($targetObj, $target, $sys_pos, $node, $oscrefclk);
-         }
+            $oscrefclk++;
+            $osrefclk_instance_per_node++;
+            # Hardcoding the sys instance as "0" since we will have only one system
+            $targetObj->{targeting}{SYS}[0]{NODES}[$node]{OSCREFCLK}[$osrefclk_instance_per_node]{KEY}= $target;
+
+            my $oscrefclk_phys = $node_phys . "/oscrefclk-$osrefclk_instance_per_node";
+            $targetObj->setAttribute($target, "PHYS_PATH", $oscrefclk_phys);
+
+            # OSCREFCLK is Non-FAPI target
+            $targetObj->setAttribute($target,"FAPI_NAME", "NA");
+
+            # Add I2C_PORT, I2C_ADDRESS, and I2C_PARENT_PHYS_PATH attributes
+            # based on the I2C destination connection of the retrieved target.
+            # These attributes helps to add the retrieved target under
+            # the respective connected (via I2C) destination target in the
+            # device tree to perform the i2c read and write operation
+            # on the OSCREFCLK target.
+            # For example, bmc-0 -> i2c-0 -> oscrefclk-0.
+            my $destConn = $targetObj->findDestConnections($target, "I2C", "");
+            if($destConn ne "")
+            {
+                my @destConnList = @{$destConn->{CONN}};
+                my $numConnections = scalar @destConnList;
+
+                if ($numConnections != 1)
+                {
+                    die "Incorrect number of OSCREFCLK I2C bus connection. Expected 1 and Found $numConnections";
+                }
+
+                my $i2c_port = $targetObj->getAttribute($destConnList[0]{SOURCE}, "I2C_PORT");
+                $targetObj->setAttribute($target, "I2C_PORT", $i2c_port);
+
+                my $i2c_addr = $targetObj->getAttribute($destConnList[0]{DEST}, "I2C_ADDRESS");
+                $targetObj->setAttribute($target, "I2C_ADDRESS", $i2c_addr);
+
+                # Found the connected BMC card from the source i2c path
+                my $src_parent = $destConnList[0]{SOURCE_PARENT};
+                while($targetObj->getType($src_parent) ne "BMC")
+                {
+                    $src_parent = $targetObj->getTargetParent($src_parent);
+                }
+                if ($src_parent eq "")
+                {
+                    die "Could not find the connected BMC from the source i2c bus connection: $destConnList[0]{SOURCE}\n";
+                }
+                my $src_parent_phys_path = $targetObj->getAttribute($src_parent, "PHYS_PATH");
+                $targetObj->setAttribute($target, "I2C_PARENT_PHYS_PATH", $src_parent_phys_path);
+            }
+        }
 
          elsif($type eq "OCMB_CHIP")
          {
@@ -230,8 +257,6 @@ my %ocmb_device_path_method_registry = (
                          "AFFINITY_PATH");
             my $fapi_pos = $targetObj->getAttribute($target,
                          "FAPI_POS");
-            print("deepa OCMB_CHIP >>>>>>>>>>>>>>>>>>>>>> affinity path $affinityPathOCMB\n");
-            print("deepa OCMB_CHIP >>>>>>>>>>>>>>>>>>>>>> FAPI_POS $fapi_pos\n");
 
             my $server_file = $targetObj->{serverwiz_file};
             my ($filename, $dir) = fileparse($server_file);
@@ -246,233 +271,42 @@ my %ocmb_device_path_method_registry = (
 
             $targetObj->setAttribute($target, "LOCATION_CODE", $location_code);
          }
-     }
- 
- }
- 
- #####################################################################
- #Process the Clock Endpoints
- #####################################################################
- 
- sub iterateOverClkEndPnts
- {
-     my $targetObj     = shift;
-     my $target   = shift;
-     my $sys      = shift;
-     my $node     = shift;
-     my $clkTgt      = shift;
-     my $clkendcnt   = -1;
- 
-     #hack to get the indexing right for clock endpoint targets
-     #which was necessitated due to the swapping around of proc targets
-     if($target =~ m/woodstar-connector-10/i)
-     {
-         $targetObj->{huid_idx}->{"PCICLKENDPT"} = 8;
-         $targetObj->{huid_idx}->{"SYSREFCLKENDPT"} = 8;
-     }
-     if($target =~ m/woodstar-connector-11/i)
-     {
-         $targetObj->{huid_idx}->{"PCICLKENDPT"} = 0xC;
-         $targetObj->{huid_idx}->{"SYSREFCLKENDPT"} = 0xC;
-     }
- 
-     my $target_children  = $targetObj->getTargetChildren($target);
- 
-     if ($target_children eq "")
-     {
-         return "";
-     }
-     else
-     {
-         foreach my $child (@{ $targetObj->getTargetChildren($target) })
-         {
-             my $unit_ptr        = $targetObj->getTarget($child);
-             my $unit_type       = $targetObj->getType($child);
-             my $bus_type        = $targetObj->getAttribute($child, "BUS_TYPE");
-             my $child_type        = $targetObj->getAttribute($child, "TYPE");
- 
-             my $unit_pos        = $targetObj->getAttribute($child, "CHIP_UNIT");
- 
-             if ($bus_type ne "CLK")
-             {
-                 next;
-             }
- 
-             $clkendcnt++;
-             if($child_type eq "NA")
-             {
-                 next;
-             }
-             else
-             {
-                 my $peer_target;
-                 my $clkendpts = $targetObj->findConnections($target, "CLK", "");
-                 if ($clkendpts eq "")
-                 {
-                     next;
-                 }
-                 else
-                 {
-                     my $CLK = $targetObj->getType($targetObj->getTargetParent($child));
-                     push(@{$targetObj->{targeting}
-                      ->{SYS}[0]{NODES}[$node]{$CLK}[$clkTgt]{$unit_type}},
-                                           {KEY=> $child});
- 
-                     foreach my $endpts (@{$clkendpts->{CONN}})
-                     {
-                         my $clk_source = $endpts->{SOURCE};
-                         if ($child eq $clk_source)
-                         {
-                             $peer_target = $endpts->{DEST};
-                         }
-                     }
-                 }
- 
-                 my $parent_affinity = $targetObj->getAttribute(
-                               $targetObj->getTargetParent($child),"AFFINITY_PATH");
-                 my $parent_physical = $targetObj->getAttribute(
-                               $targetObj->getTargetParent($child),"PHYS_PATH");
- 
-                 my $affinity_path   = $parent_affinity . "/" . lc $unit_type ."-". $clkendcnt;
-                 my $physical_path   = $parent_physical . "/" . lc $unit_type ."-". $clkendcnt;
- 
-                 $targetObj->setHuid($child, $sys, $node);
-                 $targetObj->setAttribute($child, "PHYS_PATH",       $physical_path);
-                 $targetObj->setAttribute($child, "AFFINITY_PATH",   $affinity_path);
-                 $targetObj->setAttribute($child, "ORDINAL_ID",      $clkendcnt);
-                 $targetObj->setMruid($child, $node);
- 
-                 $targetObj->setAttribute($child, "PEER_TARGET",
-                                     $targetObj->getAttribute($peer_target, "PHYS_PATH") );
-                 $targetObj->setAttribute($peer_target, "PEER_TARGET",
-                                     $targetObj->getAttribute($child, "PHYS_PATH") );
- 
-                 $targetObj->setAttribute($child, "PEER_HUID",
-                                     $targetObj->getAttribute($peer_target, "HUID") );
-                 $targetObj->setAttribute($peer_target, "PEER_HUID",
-                                     $targetObj->getAttribute($child, "HUID") );
-             }
-         }
-     }
- }
- 
- #####################################################################
- #Process OCMB and Dimms
- #####################################################################
- 
- my @sorted_membuf_LC;
- my @sorted_ocmb_LC;
- my @membuf_LC ;
- my $prev_membuf_LC;
- my @dimm_LC ;
- my @ocmb_LC ;
- my @sorted_dimmLC;
- 
- sub processMembufDimms
- {
-     my $targetObj     = shift;
-     my $target        = shift;
-     my $sys           = 0;
-     my $node          = shift;
- 
- 
-     my $nodePos        = $targetObj->{data}->{TARGETS}{$target}{TARGET}{position};
- 
-     foreach my $proc_child ($targetObj->getAllTargetChildren($target))
-     {
-         my $tgt_type       = $targetObj->getType($proc_child);
- 
-         if($tgt_type eq "MC")
-         {
-             my $mc =  $proc_child;
-             foreach my $mi (@{ $targetObj->getTargetChildren($mc) })
-             {
-                 foreach my $mcc (@{ $targetObj->getTargetChildren($mi) })
-                 {
-                 	foreach my $omic (@{ $targetObj->getTargetChildren($mcc) })
-                 	{
-                         foreach my $omi (@{ $targetObj->getTargetChildren($omic) })
-                         {
-                             my $omi_conn = $targetObj->{data}->{TARGETS}{$omi}{CONNECTION}{DEST}[0];
-                             if (defined($omi_conn))
-                             {
-                                # TODO Fix for Bonnell
-                                 my $ocmb = $targetObj->{data}->{TARGETS}{$omi_conn}{PARENT};
-                                 push (@ocmb_LC, $targetObj->getAttribute($targetObj->getTargetParent($targetObj->getTargetParent($ocmb) ), "LOCATION_CODE") );
-                                 push (@dimm_LC, $targetObj->getAttribute($targetObj->getTargetParent($targetObj->getTargetParent($ocmb) ), "LOCATION_CODE") );
-                             }# OMI connection
-                         }# OMI
-                     }# OMIC
-                 }# MCCs
-             }# MIs
-         }# MCs
-     }#proc children
-     #collect All DIMMs per connector in sorted form
-     push (@sorted_dimmLC, sort @dimm_LC);
-     push (@sorted_ocmb_LC , sort @ocmb_LC);
- 
-     # Go through each DIMM and membuf and set LOCATION CODE
-     foreach my $proc_child ($targetObj->getAllTargetChildren($target))
-     {
-         my $tgt_type       = $targetObj->getType($proc_child);
- 
-         if($tgt_type eq "MC")
-         {
-             my $mc =  $proc_child;
-             foreach my $mi (@{ $targetObj->getTargetChildren($mc) })
-             {
-                 foreach my $mcc (@{ $targetObj->getTargetChildren($mi) })
-                 {
-                     foreach my $omic (@{ $targetObj->getTargetChildren($mcc) })
-                     {
-                         foreach my $omi (@{ $targetObj->getTargetChildren($omic) })
-                         {
-                             my $omi_conn = $targetObj->{data}->{TARGETS}{$omi}{CONNECTION}{DEST}[0];
-                             if (defined($omi_conn))
-                             {
-                                 # found ocmb connected
-                                 my $ocmb = $targetObj->{data}->{TARGETS}{$omi_conn}{PARENT};
-                                 my $current_ocmb_LC = shift @sorted_ocmb_LC;
- 
-                                 $prev_membuf_LC = $current_ocmb_LC;
- 
-                                 $current_ocmb_LC = "Ufcs-P0-".$current_ocmb_LC;
- 
-                                 $targetObj->setAttribute($ocmb, "CHIP_ID", "0x60E9");
-                                 $targetObj->setAttribute($ocmb, "EC", "0x10");
- 
-                                 my $dimmRelativeLC = $targetObj->getAttribute($targetObj->getTargetParent($targetObj->getTargetParent($ocmb)),"LOCATION_CODE");
-                                 my $dimmLC = "Ufcs-P0-".$dimmRelativeLC;
-                                 $targetObj->setAttribute($ocmb, "LOCATION_CODE", $dimmLC);
- 
-                                 my $current_dimm_LC = shift @sorted_dimmLC;
-                                 $current_dimm_LC = $current_ocmb_LC . "-" . $current_dimm_LC;
- 
-                                 # populate DIMM location code
-                                 my $dimm = $targetObj->getTargetParent($ocmb);
-                                 foreach my $child (@{ $targetObj->getTargetChildren($dimm) })
-                                 {
-                                     my $childTargetType = $targetObj->getTargetType($child);
-                                     if (($childTargetType eq "unit-ddr") ||
-                                         ($childTargetType eq "unit-ddr4-jedec") ||
-                                         ($childTargetType eq "unit-ddr5-jedec"))
-                                     {
-                                         #print "Adding $child of type $childTargetType\n";
-                                         $targetObj->setAttribute($child, "LOCATION_CODE", $dimmLC);
-                                     }
-                                 }
- 
-                             }# OMI connection
-                         }# OMIs
-                     }# OMICs
-                 }# MCCs
-             }# MIs
-         }# MCs
-     }
- }
- 
+         elsif ($type eq "DIMM")
+        {
+            # The DIMM target that needs to be picked up has a new type
+            # as per the new HB changes to support DDR5. They will be
+            # unit-ddr* type and not lcard-dimm*. While parsing we get all
+            # of them, so skip the unit-ddr*, get the location code from
+            # the target with lcard type and set the location code for its
+            # child targets which are again unit-ddr*
+            my $target_type = $targetObj->getTargetType($target);
+            if (($target_type eq "unit-ddr") ||
+                ($target_type eq "unit-ddr4-jedec") ||
+                ($target_type eq "unit-ddr5-jedec"))
+               {
+                   next;
+               }
 
- my $fsiCnt = -1;
+            my $location_code = Parsers_Common::getLocationCode($targetObj, $target);
+            # needed for Bonnell which has older DIMM type
+            $targetObj->setAttribute($target, "LOCATION_CODE", $location_code);
+
+            foreach my $child (@{ $targetObj->getTargetChildren($target) })
+            {
+                my $child_target_type = $targetObj->getTargetType($child);
+                if (($child_target_type eq "unit-ddr") ||
+                    ($child_target_type eq "unit-ddr4-jedec") ||
+                    ($child_target_type eq "unit-ddr5-jedec"))
+                {
+                     $targetObj->setAttribute($child, "LOCATION_CODE", $location_code);
+                }
+             }
+        }
+     }
+ 
+ }
+ 
+  my $fsiCnt = -1;
  sub process_bmc_proc
  {
      my $multinode = -1 ;
@@ -720,21 +554,20 @@ sub CreateProcModuleDevicePaths {
     my $hex_fsi_port = sprintf("0x%06X", $fsi_port[$proc_id]);
 
     my %device_paths = (
-        sbefifo_device_path  => "/dev/sbefifo$devIndex",
-        kernel_device_path   => "/dev/scom$devIndex",
-        fsi_device_path      => "$fsi_prefix/slave\@$fsi_address:00/raw:$hex_fsi_port",
+        SBEFIFO_DEVICE_PATH  => "/dev/sbefifo$devIndex",
+        KERNEL_DEVICE_PATH   => "/dev/scom$devIndex",
+        FSI_DEVICE_PATH      => "$fsi_prefix/slave\@$fsi_address:00/raw",
+        FSI_PORT             => "$hex_fsi_port",
+        SELECTED_BACKEND     => "SBEFIFO",
     );
     return \%device_paths;
 }
 
 sub CreateOCMBDevicePaths {
     my ($inputXMLFileName, $fapi_pos) = @_;
-    print ("deepa CreateOCMBDevicePaths $inputXMLFileName\n");
-    print ("deepa CreateOCMBDevicePaths fapi_pos :: $fapi_pos\n");
     # fapi pos has the proc index as the first byte, so extract it
     # Convert to hex string (uppercase, no '0x' prefix)
     my $hex = sprintf("%02X", $fapi_pos);  # e.g., 26 → "1A"
-    print ("deepa CreateOCMBDevicePaths hex:: $hex\n");
     # Extract the most significant hex digit to get the proc index
     my $proc_id = substr($hex, 0, 1);  # "1"
     my $ocmb_port_value;
@@ -748,9 +581,10 @@ sub CreateOCMBDevicePaths {
     $ocmb_port_value = $ocmb_device_path_method_registry{$inputXMLFileName}->($proc_id, $index);
 
     my %device_paths = (
-        sbefifo_device_path  => "/dev/sbefifo$ocmb_port_value",
-        kernel_device_path   => "/dev/scom$ocmb_port_value",
-        fsi_device_path      => "/i2cr$ocmb_port_value/slave@00:00/raw",
+        SBEFIFO_DEVICE_PATH  => "/dev/sbefifo$ocmb_port_value",
+        KERNEL_DEVICE_PATH   => "/dev/scom$ocmb_port_value",
+        FSI_DEVICE_PATH      => "/i2cr$ocmb_port_value/slave@00:00/raw",
+        SELECTED_BACKEND     => "SBEFIFO",
     );
 
     foreach my $key (sort keys %device_paths) {

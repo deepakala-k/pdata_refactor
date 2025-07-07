@@ -49,7 +49,26 @@
     </targetType>
     <targetType>
         <id>chip-processor-power10</id>
+        <attribute>
+            <id>FSI_PORT</id>
+        </attribute>
         <parent>chip-processor</parent>
+    </targetType>
+    <targetType>
+        <id>scommable-chip</id>
+        <attribute>
+            <id>SBEFIFO_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>KERNEL_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>FSI_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>SELECTED_BACKEND</id>
+        </attribute>
+        <parent>chip</parent>
     </targetType>
     <targetType>
         <attribute>
@@ -59,7 +78,7 @@
             <id>EQ_GARD</id>
         </attribute>
         <id>chip-processor</id>
-        <parent>chip</parent>
+        <parent>scommable-chip</parent>
     </targetType>
     <targetType>
         <attribute>
@@ -185,7 +204,7 @@
     </targetType>
     <targetType>
         <id>chip-ocmb</id>
-        <parent>chip</parent>
+        <parent>scommable-chip</parent>
     </targetType>
     <targetType>
         <id>chip-ocmb-planar</id>

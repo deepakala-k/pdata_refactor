@@ -684,6 +684,55 @@
     </attribute>
 
     <attribute>
+        <description>FSI device path for cfam operations</description>
+        <id>FSI_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>FSI port value</description>
+        <id>FSI_PORT</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <uint32_t>
+                <default>0</default>
+            </uint32_t>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>Direct kernel path for scom operations</description>
+        <id>KERNEL_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>Sbefifo copath for scom operations</description>
+        <id>SBEFIFO_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+
+    <attribute>
         <description>Location code of the Fru target</description>
         <id>LOCATION_CODE</id>
         <persistency>non-volatile</persistency>
@@ -842,5 +891,38 @@
                 <sizeInclNull>64</sizeInclNull>
             </string>
         </simpleType>
+    </attribute>
+
+        <enumerationType>
+        <default>SBEFIFO</default>
+        <description>
+            Enumeration indicating the current backend sbefifo/kernel
+        </description>
+        <enumerator>
+            <name>SBEFIFO</name>
+            <value>0</value>
+        </enumerator>
+        <enumerator>
+            <name>KERNEL</name>
+            <value>1</value>
+        </enumerator>
+        <id>SELECTED_BACKEND</id>
+    </enumerationType>
+
+    <attribute>
+        <description>Type of selected backend</description>
+        <hasStringConversion></hasStringConversion>
+        <id>SELECTED_BACKEND</id>
+        <no_export></no_export>
+        <persistency>non-volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <enumeration>
+                <default>SBEFIFO</default>
+                <id>SELECTED_BACKEND</id>
+            </enumeration>
+            <uint8_t></uint8_t>
+        </simpleType>
+        <writeable></writeable>
     </attribute>
 </attributes>

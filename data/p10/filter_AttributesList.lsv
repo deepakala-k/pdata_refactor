@@ -117,6 +117,10 @@ CA:POSITION
 # Below attributes required for DT hierarchy
 CA:PHYS_PATH
 CA:PARENT_PERVASIVE
+CA:FSI_DEVICE_PATH
+CA:FSI_PORT
+CA:SBEFIFO_DEVICE_PATH
+CA:KERNEL_DEVICE_PATH
 CA:AFFINITY_PATH
 # CHIP_UNIT attribute require to fill index and CHIP_UNIT_POS
 # attribute value but not require in device tree

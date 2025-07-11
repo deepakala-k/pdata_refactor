@@ -661,42 +661,6 @@
         <readable></readable>
     </attribute>
 
-        <attribute>
-        <description>sbefifo device path</description>
-        <id>SBEFIFO_DEVICE_PATH</id>
-        <simpleType>
-            <string>
-                <sizeInclNull>120</sizeInclNull>
-            </string>
-        </simpleType>
-        <persistency>non-volatile</persistency>
-        <readable/>
-    </attribute>
-
-    <attribute>
-        <description>Kernel device path</description>
-        <id>KERNEL_DEVICE_PATH</id>
-        <simpleType>
-            <string>
-                <sizeInclNull>120</sizeInclNull>
-            </string>
-        </simpleType>
-        <persistency>non-volatile</persistency>
-        <readable/>
-    </attribute>
-
-    <attribute>
-        <description>FSI device path</description>
-        <id>FSI_DEVICE_PATH</id>
-        <simpleType>
-            <string>
-                <sizeInclNull>120</sizeInclNull>
-            </string>
-        </simpleType>
-        <persistency>non-volatile</persistency>
-        <readable/>
-    </attribute>
-
     <attribute>
         <description>Common name across FAPI environments
             chip target -&gt; pu:k0:n0:s0:p00
@@ -718,6 +682,55 @@
             </string>
         </simpleType>
     </attribute>
+
+    <attribute>
+        <description>FSI device path for cfam operations</description>
+        <id>FSI_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>FSI port value</description>
+        <id>FSI_PORT</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <uint32_t>
+                <default>0</default>
+            </uint32_t>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>Direct access path for scom operations</description>
+        <id>DIRECT_ACCESS_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>Sbefifo device path for scom operations</description>
+        <id>SBEFIFO_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
 
     <attribute>
         <description>Location code of the Fru target</description>
@@ -878,5 +891,38 @@
                 <sizeInclNull>64</sizeInclNull>
             </string>
         </simpleType>
+    </attribute>
+
+        <enumerationType>
+        <default>SBEFIFO</default>
+        <description>
+            Enumeration indicating the current backend sbefifo/direct access
+        </description>
+        <enumerator>
+            <name>SBEFIFO</name>
+            <value>0</value>
+        </enumerator>
+        <enumerator>
+            <name>DIRECT_ACCESS</name>
+            <value>1</value>
+        </enumerator>
+        <id>HW_ACCESS_METHOD</id>
+    </enumerationType>
+
+    <attribute>
+        <description>Type of the current hardware access method</description>
+        <hasStringConversion></hasStringConversion>
+        <id>HW_ACCESS_METHOD</id>
+        <no_export></no_export>
+        <persistency>volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <enumeration>
+                <default>SBEFIFO</default>
+                <id>HW_ACCESS_METHOD</id>
+            </enumeration>
+            <uint8_t></uint8_t>
+        </simpleType>
+        <writeable></writeable>
     </attribute>
 </attributes>

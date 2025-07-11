@@ -18,7 +18,6 @@ use strict;
 my $currDir = dirname($0);
 my $topSrcDir = dirname($currDir);
 require "$currDir/parseIntermediateXMLUtils.pl";
-require "$currDir/createDevicePaths.pl";
 
 
 # Global variables list begin
@@ -682,34 +681,6 @@ sub addTargetDataIntoDTSFile
     if (exists $attributeList{"PHYS_DEV_PATH"})
     {
         $attributeList{"PHYS_DEV_PATH"}->value($attributeList{"PHYS_PATH"}->value);
-    }
-
-    my $device_paths;
-    if (index($devTreeNode->compatible, "chip-processor") != -1)
-    {
-        $device_paths = CreateProcModuleDevicePaths($devTreeNode->index);
-    }
-    elsif (index($devTreeNode->compatible, "chip-ocmb") != -1)
-    {
-        my $fapi_pos = $attributeList{"FAPI_POS"}->value();  
-        $device_paths = CreateOCMBDevicePaths($inXMLFile, $fapi_pos, $devTreeNode->index);
-    }
-
-    #The device path is populated only for OCMB and proc targets
-    if ($device_paths ne '')
-    {
-      if (exists $attributeList{"SBEFIFO_DEVICE_PATH"})
-      {
-          $attributeList{"SBEFIFO_DEVICE_PATH"}->value($device_paths->{sbefifo_device_path});
-      }
-      if (exists $attributeList{"KERNEL_DEVICE_PATH"})
-      {
-          $attributeList{"KERNEL_DEVICE_PATH"}->value($device_paths->{kernel_device_path});
-      }
-      if (exists $attributeList{"FSI_DEVICE_PATH"})
-      {
-          $attributeList{"FSI_DEVICE_PATH"}->value($device_paths->{fsi_device_path});
-      }
     }
 
     if (exists $attributeList{"PHYS_BIN_PATH"})

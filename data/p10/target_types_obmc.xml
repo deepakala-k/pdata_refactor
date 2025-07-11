@@ -58,6 +58,21 @@
         <attribute>
             <id>EQ_GARD</id>
         </attribute>
+        <attribute>
+            <id>FSI_PORT</id>
+        </attribute>
+        <attribute>
+            <id>SBEFIFO_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>DIRECT_ACCESS_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>FSI_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>HW_ACCESS_METHOD_BACKEND</id>
+        </attribute>
         <id>chip-processor</id>
         <parent>chip</parent>
     </targetType>
@@ -70,15 +85,6 @@
         </attribute>
         <attribute>
             <id>LOCATION_CODE</id>
-        </attribute>
-        <attribute>
-            <id>KERNEL_DEVICE_PATH</id>
-        </attribute>
-        <attribute>
-            <id>SBEFIFO_DEVICE_PATH</id>
-        </attribute>
-        <attribute>
-            <id>FSI_DEVICE_PATH</id>
         </attribute>
         <id>chip</id>
         <parent>base</parent>
@@ -194,6 +200,15 @@
     </targetType>
     <targetType>
         <id>chip-ocmb</id>
+        <attribute>
+            <id>SBEFIFO_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>DIRECT_ACCESS_DEVICE_PATH</id>
+        </attribute>
+        <attribute>
+            <id>FSI_DEVICE_PATH</id>
+        </attribute>
         <parent>chip</parent>
     </targetType>
     <targetType>

@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 # SPDX-License-Identifier: Apache-2.0
 
 ###############################################################
@@ -206,7 +206,8 @@ sub getInfoDBAttrsData
     {
         # Don't add the attributes if that not required in the device tree
         # attributes list.
-        if ($attributeDefList{$attr}->notRequiredInDevTree eq "1")
+        if (defined $attributeDefList{$attr}->notRequiredInDevTree && 
+        $attributeDefList{$attr}->notRequiredInDevTree eq "1")
         {
             next;
         }
@@ -318,13 +319,17 @@ sub getInfoDBTgtsData
         {
             # Don't add the attributes if that not required in the device tree
             # attributes list.
-            if ($attributeDefList{$attr}->notRequiredInDevTree eq "1")
+            if (defined $attributeDefList{$attr} &&
+            $attributeDefList{$attr}->notRequiredInDevTree &&
+            $attributeDefList{$attr}->notRequiredInDevTree eq "1")
             {
                 next;
             }
             if (!exists $uniqueTgts{$FAPITgt}{$attr})
             {
-                $uniqueTgts{$FAPITgt}{$attr} = $infoDBAttrsList{$attr}->index;
+                if (defined $attributeDefList{$attr}) {
+                    $uniqueTgts{$FAPITgt}{$attr} = $infoDBAttrsList{$attr}->index;
+                }
             }
         }
     }

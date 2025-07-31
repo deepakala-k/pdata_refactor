@@ -5219,7 +5219,7 @@ sub getAttributeIdEnumeration {
             else
             {
                 croak("Error: AttributeId $attribute->{id} "
-                    . "defined multiple times");
+                    . "defined multiple times\n\n");
             }
         }
         else

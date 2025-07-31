@@ -76,6 +76,17 @@ my @NewAttr;
 foreach my $Extension ( @{$generic->{targetTypeExtension}} )
 {
     my $id = $Extension->{id}->[0];
+
+    if(! exists $generic1->{targetType}->{$id})
+    {
+        #TODO: DB
+        # ERROR: targetTypeExtension HASH(0x555555d88cb0) does not have a targetType to map
+        # ERROR: targetTypeExtension unit-mds-ctlr does not have a targetType to map
+        # TODO: check if the parent is different, then trigger an error.
+        
+        #print "ERROR: targetTypeExtension $id does not have a targetType to map\n";
+    }
+
     foreach my $attr ( @{$Extension->{attribute}} )
     {
         my $attribute_id = $attr->{id}->[0];

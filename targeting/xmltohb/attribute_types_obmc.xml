@@ -1,0 +1,228 @@
+    <attribute>
+        <id>DISABLE_SECURITY</id>
+        <description>This attribute indicates the security status . Based on this
+            HWSV will update the BOOT_FLAGS attribute to disable the security. HWSV
+            will detect the IPL type and set the required bits in the BOOT_FLAGS
+        </description>
+        <simpleType>
+            <uint8_t>
+                <default>0</default>
+            </uint8_t>
+        </simpleType>
+        <persistency>semi-non-volatile</persistency>
+        <readable/>
+        <writeable/>
+    </attribute>
+
+    <attribute>
+        <description>Capturing EQ Gard value</description>
+        <id>EQ_GARD</id>
+        <no_export></no_export>
+        <persistency>non-volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <uint8_t></uint8_t>
+        </simpleType>
+        <writeable></writeable>
+    </attribute>
+
+    <attribute>
+        <description>Physical hierarchical path to the target. Used for device tree purpose, due to existing PHYS_PATH attribute type is in EntityPath(class) which is not supported by device tree.</description>
+        <id>PHYS_DEV_PATH</id>
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+        <persistency>non-volatile</persistency>
+        <readable/>
+    </attribute>
+
+    <attribute>
+        <description>This attribute is used to maintain physical hierarchical path value into binary format. The path value maintained in 21 byte array. First byte is contained path type (first 4 bits) and size of path elements (second 4 bits). The remaining 20 bytes are pair (target type and instance id) of path elements (max path element in path is 10) i.e first field in pair is used to maintain target type enum value and second field in pair is used to maintain the target instance id.
+            E.g.: physical:sys-0/node-0/proc-1
+            binary format: 0x23 0x01 0x00 0x02 0x00 0x05 0x01
+            0x23 => 0010 0011
+                    0010 - if path is physical then path type is 2 if logical then 1 so, 2.
+                    0011 - size of path elements so, based on example size is 3.
+        </description>
+        <simpleType>
+            <array>21</array>
+            <uint8_t></uint8_t>
+        </simpleType>
+        <id>PHYS_BIN_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable></readable>
+    </attribute>
+
+    <attribute>
+        <description>FSI device path for cfam operations</description>
+        <id>FSI_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>FSI port value</description>
+        <id>FSI_PORT</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <uint32_t>
+                <default>0</default>
+            </uint32_t>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>Direct access path for scom operations</description>
+        <id>DIRECT_ACCESS_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>Sbefifo device path for scom operations</description>
+        <id>SBEFIFO_DEVICE_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable />
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+    <enumerationType>
+        <description>
+            The functional state of the system oscillators.
+        </description>
+        <enumerator>
+            <name>NO_DECONFIG</name>
+            <value>0x0</value>
+        </enumerator>
+        <enumerator>
+            <name>A_DECONFIG</name>
+            <value>0x1</value>
+        </enumerator>
+        <enumerator>
+            <name>B_DECONFIG</name>
+            <value>0x2</value>
+        </enumerator>
+        <enumerator>
+            <name>ALL_DECONFIG</name>
+            <value>0x3</value>
+        </enumerator>
+        <id>SYS_CLOCK_DECONFIG_STATE</id>
+    </enumerationType>
+
+    <attribute>
+        <description>
+            The state of the system clocks. This attribute is set by
+            Hostboot and read by the BMC on reconfig loops so that it can
+            tell which clocks are functional. See the enumeration
+            SYS_CLOCK_DECONFIG_STATE for the possible values of this
+            attribute.
+        </description>
+        <id>SYS_CLOCK_DECONFIG_STATE</id>
+        <persistency>non-volatile</persistency>
+        <readable/>
+        <writeable/>
+        <simpleType>
+            <enumeration>
+                <default>NO_DECONFIG</default>
+                <id>SYS_CLOCK_DECONFIG_STATE</id>
+            </enumeration>
+            <uint32_t></uint32_t>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>The I2C Address of the target to use in the device tree
+            reg property. It can be added to target that wants under
+            the respective I2C device tree target.
+        </description>
+        <id>I2C_ADDRESS</id>
+        <persistency>non-volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <uint8_t>
+                <default>0</default>
+            </uint8_t>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>The I2C Port of the target to use in the device tree along
+            with I2C device tree target node name. For example, i2c-N.
+            It can be added to target that wants under the respective I2C
+            device tree target.
+        </description>
+        <id>I2C_PORT</id>
+        <persistency>non-volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <uint8_t>
+                <default>0</default>
+            </uint8_t>
+        </simpleType>
+    </attribute>
+
+    <attribute>
+        <description>The I2C target parent physical path. Used for adding the
+            I2C target under the respective parent. It can be added to target
+            that wants under the respective I2C device tree target.
+        </description>
+        <id>I2C_PARENT_PHYS_PATH</id>
+        <persistency>non-volatile</persistency>
+        <readable/>
+        <simpleType>
+            <string>
+                <sizeInclNull>64</sizeInclNull>
+            </string>
+        </simpleType>
+    </attribute>
+
+        <enumerationType>
+        <default>SBEFIFO</default>
+        <description>
+            Enumeration indicating the current backend sbefifo/direct access
+        </description>
+        <enumerator>
+            <name>SBEFIFO</name>
+            <value>0</value>
+        </enumerator>
+        <enumerator>
+            <name>DIRECT_ACCESS</name>
+            <value>1</value>
+        </enumerator>
+        <id>HW_ACCESS_METHOD</id>
+    </enumerationType>
+
+    <attribute>
+        <description>Type of the current hardware access method</description>
+        <hasStringConversion></hasStringConversion>
+        <id>HW_ACCESS_METHOD</id>
+        <no_export></no_export>
+        <persistency>volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <enumeration>
+                <default>SBEFIFO</default>
+                <id>HW_ACCESS_METHOD</id>
+            </enumeration>
+            <uint8_t></uint8_t>
+        </simpleType>
+        <writeable></writeable>
+    </attribute>
+</attributes>

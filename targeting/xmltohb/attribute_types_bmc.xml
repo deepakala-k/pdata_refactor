@@ -94,7 +94,6 @@
         <persistency>semi-non-volatile</persistency>
         <readable/>
         <writeable/>
-        <bmcOnly/>
     </attribute>
 
     <enumerationType>
@@ -138,20 +137,6 @@
                 <id>SYS_CLOCK_DECONFIG_STATE</id>
             </enumeration>
             <uint32_t></uint32_t>
-        </simpleType>
-    </attribute>
-
-    <attribute>
-        <description>The number of secure version currently installed on the system.
-                     Hostboot passes this number to the BMC
-        </description>
-        <id>SECURE_VERSION_NUM</id>
-        <persistency>non-volatile</persistency>
-        <readable></readable>
-        <simpleType>
-            <uint8_t>
-                <default>0</default>
-            </uint8_t>
         </simpleType>
     </attribute>
 

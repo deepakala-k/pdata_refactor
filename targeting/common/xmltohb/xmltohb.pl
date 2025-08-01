@@ -7103,11 +7103,9 @@ sub generateTargetingImage {
 
     my $numTargets = @targetsAoH;
     my $numAttributes = 0;
-    print ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
     foreach my $targetInstance (@targetsAoH)
     {
         my %attrhash = ();
-        print ("deepaaaaaaaaaaaaaaaaaaaaaaaaa\n");
         print Dumper($attributes);
         getTargetAttributes($targetInstance->{type}, $attributes,\%attrhash);
         $numAttributes += keys %attrhash;

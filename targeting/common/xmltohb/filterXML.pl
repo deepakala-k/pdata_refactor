@@ -66,7 +66,7 @@ if ( $filterType eq "" )
     exit 1;
 }
 # Checking given filter type to check its supported or not
-if ( $filterType ne "ekbAttrsXML" and $filterType ne "customAttrsXML" and $filterType ne "customTgtXML" and $filterType ne "systemXML" )
+if ( $filterType ne "ekbAttrsXML" and $filterType ne "customAttrsXML" and $filterType ne "customTgtXML" and $filterType ne "systemXML" and $filterType ne "allAttrsXML")
 {
     print "The given filterType : \"$filterType\" is not supported.\nPlease check by --help to get know supported xml format type for filter\n";
     exit 1;
@@ -151,6 +151,12 @@ sub main
         %reqAttrsList = getReqCustomAttrsList($filterAttrsFile);
         filterCustomAttrs();
     }
+    elsif ( $filterType eq "allAttrsXML" )
+    {
+        %reqAttrsList = getReqAllAttrsFilterList($filterAttrsFile);
+        #as of now custom and ekb are filter looks for the same tag <targetType>
+        filterCustomAttrs();
+    }
     elsif ( $filterType eq "customTgtXML" )
     {
         %reqTgtsList = getRequiredTgts($filterTgtsFile);
@@ -232,7 +238,7 @@ sub getReqData
                 }
             }
 
-            if ( $filterType eq "customAttrsXML" )
+            if ( $filterType eq "customAttrsXML" || $filterType eq "allAttrsXML" )
             {
                 if ( $nodeEle->nodeName eq "id" )
                 {

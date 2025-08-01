@@ -83,6 +83,7 @@ foreach my $Extension ( @{$generic->{targetTypeExtension}} )
         # ERROR: targetTypeExtension HASH(0x555555d88cb0) does not have a targetType to map
         # ERROR: targetTypeExtension unit-mds-ctlr does not have a targetType to map
         # TODO: check if the parent is different, then trigger an error.
+        # TODO: Also remove the repeated ones.
         
         #print "ERROR: targetTypeExtension $id does not have a targetType to map\n";
     }

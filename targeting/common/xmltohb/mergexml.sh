@@ -21,6 +21,12 @@
 # permissions and limitations under the License.
 #
 # IBM_PROLOG_END_TAG
-echo "<attributes>" 
-cat $* | grep -v "<attributes>" | grep -v "</attributes>" 
-echo "</attributes>" 
+first_line=$(grep -m1 -v '^[[:space:]]*$' "$1")
+
+if [ "$first_line" != "<attributes>" ]; then
+    echo "<attributes>"
+    cat "$@" | grep -v "<attributes>" | grep -v "</attributes>"
+    echo "</attributes>"
+else
+    cat "$@"
+fi

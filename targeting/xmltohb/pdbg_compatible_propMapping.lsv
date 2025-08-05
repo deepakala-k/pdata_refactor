@@ -1,0 +1,51 @@
+# Targets pdbg mapping info
+# Format : MRWTargetType:PdbgCompatiblePropValue
+#
+# FAPI targets list
+unit-eq-power10:ibm,power10-eq
+unit-fc-power10:ibm,power10-fc
+unit-core-power10:ibm,power10-core
+unit-perv-power10:ibm,power10-chiplet
+unit-pauc-power10:ibm,power10-pauc
+unit-pec-power10:ibm,power10-pec
+unit-phb-power10:ibm,power10-phb
+unit-nmmu-power10:ibm,power10-nmmu
+unit-iohs-power10:ibm,power10-iohs
+unit-pau-power10:ibm,power10-pau
+unit-mc-power10:ibm,power10-mc
+unit-mi-power10:ibm,power10-mi
+chip-processor-power10:"ibm,power-proc", "ibm,power10-proc"
+unit-mcc-power10:ibm,power10-mcc
+unit-omic-power10:ibm,power10-omic
+unit-omi-power10:ibm,power10-omi
+chip-ocmb:"ibm,power-ocmb", "ibm,power10-ocmb"
+chip-ocmb-planar:"ibm,power-ocmb", "ibm,power10-ocmb"
+unit-mem_port:ibm,power10-memport
+unit-perv:ibm,ody-chiplet
+lcard-dimm-ddimm:ibm,power10-dimm
+lcard-dimm-ddimm4u:ibm,power10-dimm
+lcard-dimm-ddr4:ibm,power10-dimm
+unit-ddr4-jedec:ibm,power10-dimm
+unit-ddr5-jedec:ibm,power10-dimm
+unit-ddr:ibm,power10-dimm
+# Using smpgroup instead abus in compatible property as per
+# PHYS_PATH attribute which is changed in processMrw.pl
+unit-abus-power10:ibm,power10-smpgroup
+# Non-FAPI targets list
+chip-bmc-ast2600:bmc-ast2600
+chip-vreg-generic:ibm,pmic-vreg
+unit-nx-power10:ibm,power10-nx
+unit-occ-power10:ibm,power10-occ
+# Thread target added by genDTS tool for pdbg register access
+unit-thread:"ibm,power-thread", "ibm,power10-thread"
+# TPM target
+chip-NPCT750AAC:ibm,power10-tpm
+# OSCREFCLK target
+chip-SI5332:ibm,power10-oscrefclk
+# OSCREFCLK target rainier
+chip-Si5332LD:ibm,power10-oscrefclk
+# Generic I2C Devices (aka ADC and GPIO Expanders)
+chip-adc:ibm,power10-adc
+chip-PCA9554:ibm,power10-gpio_expander
+# PMIC (Power Management Integrated Circuit)
+chip-vreg-generic:ibm,power10-pmic

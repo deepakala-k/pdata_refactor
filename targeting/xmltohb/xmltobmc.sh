@@ -6,7 +6,7 @@ GENDIR="${ROOT_TARGETING_PATH}/obj/genfiles"
 COMMON_XMLTOHB_REL_PATH="${ROOT_TARGETING_PATH}/common/xmltohb"
 TARGETING_XMLTOHB_REL_PATH="${ROOT_TARGETING_PATH}/xmltohb"
 
-export PERL5LIB="$COMMON_XMLTOHB_REL_PATH"
+export PERL5LIB="$COMMON_XMLTOHB_REL_PATH:$TARGETING_XMLTOHB_REL_PATH${PERL5LIB:+:$PERL5LIB}"
 
 [ -d "$GENDIR" ] && rm -rf "$GENDIR"
 
@@ -22,9 +22,10 @@ EKB_CUSTOMIZED_ATTRS_XML_BMC="ekb_customized_attrs_bmc.xml"
 ATTRIBUTE_SERVICE_H="plat_attribute_service.H"
 
 # XML inputs
-XMLTOHB_MERGED_XML="merged.xml"
+XMLTOHB_ATTRIBUTES_TARGETS_MERGED_XML="attributes_targettype_merged.xml"
 XMLTOHB_FILTERED_MERGED_XML="filtered_merged.xml"
 XMLTOHB_FAPI_XML="fapiattrs.xml"
+XMLTOHB_FAPI_XML_FILTERED="filtered_fapiattrs.xml"
 
 # Script files
 XMLTOHB_MERGE_SCRIPT="mergexml.sh"
@@ -86,8 +87,9 @@ XMLTOHB_SRC_TARGET_TYPES="target_types_src.xml"
 # a_full = a_src + a_ekb
 # t_full = t_src + t_ekb
 XMLTOHB_FULL_ATTRIBUTE_TYPES="attribute_types_full.xml"
-XMLTOHB_FULL_ATTRIBUTE_FILTERED="attribute_types_full_filtered.xml"
+XMLTOHB_FULL_ATTRIBUTE_FILTERED="filtered_attribute_types_full.xml"
 XMLTOHB_FULL_TARGET_TYPES="target_types_full.xml"
+XMLTOHB_FULL_TARGET_TYPES_EXPANDED="target_types_full_expanded.xml"
 
 # attribute_customization
 # hb_temp_defaults.xml + hb_customized_attrs.xml ( + hb_customized_attrs_fsp.xml)
@@ -163,13 +165,11 @@ echo "Merging FAPI attribute sources into: ${GENDIR}/${XMLTOHB_FAPI_XML}"
 
 TEMP_DEFAULTS_XML="tempdefaults.xml"
 BMC_TEMP_DEFAULTS_XML="bmc_customized_ekb_attrs.xml"
-EKB_CUSTOMIZED_ATTRS_XML="ekb_customized_attrs.xml"
 
 #Note that order matters here , we want hb_customized_attrs to be first so it's defaults get picked up first
 #if there are duplicates
 XMLTOHB_ATTRIBUTE_CUSTOMIZATION_SOURCES="${COMMON_XMLTOHB_REL_PATH}/${TEMP_DEFAULTS_XML} "
 XMLTOHB_ATTRIBUTE_CUSTOMIZATION_SOURCES+="${TARGETING_XMLTOHB_REL_PATH}/${BMC_TEMP_DEFAULTS_XML} "
-XMLTOHB_ATTRIBUTE_CUSTOMIZATION_SOURCES+="${COMMON_XMLTOHB_REL_PATH}/${EKB_CUSTOMIZED_ATTRS_XML}"
 "$COMMON_XMLTOHB_REL_PATH/${XMLTOHB_MERGE_SCRIPT}" ${XMLTOHB_ATTRIBUTE_CUSTOMIZATION_SOURCES} > \
 "${GENDIR}/${XMLTOHB_ATTRIBUTE_CUSTOMIZATION}"
 
@@ -198,19 +198,19 @@ echo "Running: $script --ekbXmlFile=${GENDIR}/${XMLTOHB_EKB_ATTRIBUTE_TYPES}
     --plat="${GENDIR}/${XMLTOHB_EKB_TARGET_TYPES}" \
     --common="${GENDIR}/${XMLTOHB_SRC_TARGET_TYPES}" > "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}"
 
-echo "-------------- Running $COMMON_XMLTOHB_REL_PATH/${XMLTOHB_SWAP_MAPPED_ATTR_SCRIPT}" \
-    --srcTargetXml="${GENDIR}/${XMLTOHB_SRC_TARGET_TYPES}" \
-    --ekbTargetXml="${GENDIR}/${XMLTOHB_EKB_TARGET_TYPES}" \
-    --fullAttrXml="${GENDIR}/${XMLTOHB_FULL_ATTRIBUTE_TYPES}" \
-    --fullTargetXml="${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}" \
-    --fapi2Header="${TARGETING_XMLTOHB_REL_PATH}/attribute_service.H"
+# echo "-------------- Running $COMMON_XMLTOHB_REL_PATH/${XMLTOHB_SWAP_MAPPED_ATTR_SCRIPT}" \
+#     --srcTargetXml="${GENDIR}/${XMLTOHB_SRC_TARGET_TYPES}" \
+#     --ekbTargetXml="${GENDIR}/${XMLTOHB_EKB_TARGET_TYPES}" \
+#     --fullAttrXml="${GENDIR}/${XMLTOHB_FULL_ATTRIBUTE_TYPES}" \
+#     --fullTargetXml="${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}" \
+#     --fapi2Header="${TARGETING_XMLTOHB_REL_PATH}/attribute_service.H"
 
-"$COMMON_XMLTOHB_REL_PATH/${XMLTOHB_SWAP_MAPPED_ATTR_SCRIPT}" \
-    --srcTargetXml="${GENDIR}/${XMLTOHB_SRC_TARGET_TYPES}" \
-    --ekbTargetXml="${GENDIR}/${XMLTOHB_EKB_TARGET_TYPES}" \
-    --fullAttrXml="${GENDIR}/${XMLTOHB_FULL_ATTRIBUTE_TYPES}" \
-    --fullTargetXml="${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}" \
-    --fapi2Header="${TARGETING_XMLTOHB_REL_PATH}/attribute_service.H"
+# "$COMMON_XMLTOHB_REL_PATH/${XMLTOHB_SWAP_MAPPED_ATTR_SCRIPT}" \
+#     --srcTargetXml="${GENDIR}/${XMLTOHB_SRC_TARGET_TYPES}" \
+#     --ekbTargetXml="${GENDIR}/${XMLTOHB_EKB_TARGET_TYPES}" \
+#     --fullAttrXml="${GENDIR}/${XMLTOHB_FULL_ATTRIBUTE_TYPES}" \
+#     --fullTargetXml="${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}" \
+#     --fapi2Header="${TARGETING_XMLTOHB_REL_PATH}/attribute_service.H"
 
 file="${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}"
 
@@ -221,23 +221,29 @@ file="${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}"
     --filterAttrsFile "${TARGETING_XMLTOHB_REL_PATH}/$filter_attr" \
     --filterType allAttrsXML
 
+#remove the version line in the beginning of the file
 sed '/<?xml version="1\.0"?>/d' "${GENDIR}/${XMLTOHB_FULL_ATTRIBUTE_FILTERED}" > tmp.xml \
   && mv tmp.xml "${GENDIR}/${XMLTOHB_FULL_ATTRIBUTE_FILTERED}"
 
-# Create a temp file and wrap with <attributes> tags
-{
-  echo "<attributes>"
-  cat "$file"
-  echo "</attributes>"
-} > "${file}.tmp" && mv "${file}.tmp" "$file"
+
+#Filter the attributes to get only the required ones
+"$COMMON_XMLTOHB_REL_PATH/filterXML.pl" \
+    --inXML "${GENDIR}/${XMLTOHB_FAPI_XML}" \
+    --outXML "${GENDIR}/${XMLTOHB_FAPI_XML_FILTERED}" \
+    --filterAttrsFile "${TARGETING_XMLTOHB_REL_PATH}/$filter_attr" \
+    --filterType fapiAttrsXML
+
+#remove the version line in the beginning of the file
+#sed '/<?xml version="1\.0"?>/d' "${GENDIR}/${XMLTOHB_FAPI_XML_FILTERED}" > tmp.xml \
+#  && mv tmp.xml "${GENDIR}/${XMLTOHB_FAPI_XML_FILTERED}"
 
 # trim leading whitespace if any
 XMLTOHB_MERGED_SOURCES="${XMLTOHB_MERGED_SOURCES#" "}"
 
 # Merge all FAPI attribute files into one
-echo "Merging merged sources $XMLTOHB_MERGED_SOURCES into: ${GENDIR}/${XMLTOHB_MERGED_XML}"
+echo "Merging merged sources $XMLTOHB_MERGED_SOURCES into: ${GENDIR}/${XMLTOHB_ATTRIBUTES_TARGETS_MERGED_XML}"
 "$COMMON_XMLTOHB_REL_PATH/${XMLTOHB_MERGE_SCRIPT}" ${XMLTOHB_MERGED_SOURCES} \
-  > "${GENDIR}/${XMLTOHB_MERGED_XML}"
+  > "${GENDIR}/${XMLTOHB_ATTRIBUTES_TARGETS_MERGED_XML}"
 
 XMLTOHB_RAN_INDICATION="${GENDIR}/.called_xmltohb_compiler"
 
@@ -246,13 +252,68 @@ if [[ ! -f "$XMLTOHB_RAN_INDICATION" ]]; then
   echo "Running: ${XMLTOHB_COMPILER_SCRIPT}"
 
   "$COMMON_XMLTOHB_REL_PATH/${XMLTOHB_COMPILER_SCRIPT}" \
-    --hb-xml-file="${GENDIR}/${XMLTOHB_MERGED_XML}" \
-    --fapi-attributes-xml-file="${GENDIR}/${XMLTOHB_FAPI_XML}" \
+    --hb-xml-file="${GENDIR}/${XMLTOHB_ATTRIBUTES_TARGETS_MERGED_XML}" \
+    --fapi-attributes-xml-file="${GENDIR}/${XMLTOHB_FAPI_XML_FILTERED}" \
     --src-output-dir="${GENDIR}" \
     --img-output-dir=none \
     --img-output-file=none
 
-# TODO: Filter the targets, temporary script to expand the leaf nodes
+  "$COMMON_XMLTOHB_REL_PATH/mapTgtsAttrs.pl" \
+        --fromTgtXml "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}" \
+        --filterTgtList "${TARGETING_XMLTOHB_REL_PATH}/$filter_target" \
+        --outXml "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES_EXPANDED}" \
+        --tgtXMLType customTgt
+
+SYSTEMS_MRW_XML=/gsa/ausgsa-p10/03/indiateam04/deepa/Projects/dts/rainier-xml/Rainier-2U-MRW.xml
+ echo "deepa SYSTEMS_MRW_XML :: $SYSTEMS_MRW_XML \n"; 
+
+            echo "Step 5: Processing system xml " $(basename "$SYSTEMS_MRW_XML")
+            system_name=$(basename "$SYSTEMS_MRW_XML" .xml)
+            echo "deepa system_name = $system_name ------------------- \n"
+            "$COMMON_XMLTOHB_REL_PATH/processMrw.pl" \
+                -x "$SYSTEMS_MRW_XML" \
+                -b bmc \
+                -o "$GENDIR/${system_name}_bmc_mrw.xml"
+
+            # Step 6:
+            #      Filtering system mrw xml which is generated from step1
+            #      by using system specific filter file
+
+            echo "Step 6: Filtering processed system xml " $(basename "$SYSTEMS_MRW_XML")
+            "$COMMON_XMLTOHB_REL_PATH/filterXML.pl" \
+                --inXML "$GENDIR/${system_name}_bmc_mrw.xml" \
+                --outXML "$GENDIR/${system_name}_bmc_mrw_filtered.xml" \
+                --filterAttrsFile "${TARGETING_XMLTOHB_REL_PATH}/$filter_attr" \
+                --filterTgtsFile "${TARGETING_XMLTOHB_REL_PATH}/$filter_target" \
+                --filterType systemXML
+
+            # Step 7:
+            #      Merging all following generated xml files into single for
+            #      creating intermediate xml file
+            #            - System xml
+            #            - target_types_final.xml
+            #            - attribute_types_final.xml
+
+            echo "Step 7: Getting intermediate xml by merging system, target and attributes types xml files"
+            "$COMMON_XMLTOHB_REL_PATH/$XMLTOHB_MERGE_SCRIPT" \
+                "$GENDIR/${system_name}_bmc_mrw_filtered.xml" \
+                "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES_EXPANDED}" \
+                "$GENDIR/$XMLTOHB_FULL_ATTRIBUTE_FILTERED" \
+                > "$GENDIR/${system_name}_intermediate.xml"
+
+sed '/<?xml version="1\.0"?>/d' "$GENDIR/${system_name}_intermediate.xml" > tmp.xml \
+  && mv tmp.xml "$GENDIR/${system_name}_intermediate.xml"
+
+            # Step 8: Generating device tree structure (dts) file to generate DTB
+            #
+            #         The generated dts file will contain targets and its attributes as a
+            #         device tree format, so dtc compiler can use to get dtb file
+            echo "Step 8: Generating device tree structure file"
+            "$COMMON_XMLTOHB_REL_PATH/genDTS.pl" \
+                --inXML "$GENDIR/${system_name}_intermediate.xml" \
+                --pdbgMapFile "$TARGETING_XMLTOHB_REL_PATH/pdbg_compatible_propMapping.lsv" \
+                --outDTS "$GENDIR/${system_name}.dts"
+
 
 #   TODO: Not needed. To confirm it. echo "Copying plugin headers..."
 #   cp "${GENDIR_ERRL}/errludattributeP_gen.H" "${GENDIR_PLUGINS}"

@@ -66,7 +66,7 @@ if ( $filterType eq "" )
     exit 1;
 }
 # Checking given filter type to check its supported or not
-if ( $filterType ne "ekbAttrsXML" and $filterType ne "customAttrsXML" and $filterType ne "customTgtXML" and $filterType ne "systemXML" and $filterType ne "allAttrsXML")
+if ( $filterType ne "ekbAttrsXML" and $filterType ne "customAttrsXML" and $filterType ne "customTgtXML" and $filterType ne "systemXML" and $filterType ne "allAttrsXML" and $filterType ne "fapiAttrsXML")
 {
     print "The given filterType : \"$filterType\" is not supported.\nPlease check by --help to get know supported xml format type for filter\n";
     exit 1;
@@ -157,6 +157,12 @@ sub main
         #as of now custom and ekb are filter looks for the same tag <targetType>
         filterCustomAttrs();
     }
+    elsif ( $filterType eq "fapiAttrsXML" )
+    {
+        %reqAttrsList = getReqAllAttrsFilterList($filterAttrsFile);
+        #as of now custom and ekb are filter looks for the same tag <targetType>
+        filterFAPIAttrs();
+    }
     elsif ( $filterType eq "customTgtXML" )
     {
         %reqTgtsList = getRequiredTgts($filterTgtsFile);
@@ -189,9 +195,20 @@ sub filterEKBAttrsDef
 
 sub filterCustomAttrs
 {
+    
     foreach my $rAttr ( sort ( keys %reqAttrsList))
     {
         my $attrDefPath = '/attributes/attribute/id[text()=\''.$rAttr.'\']/ancestor::attribute';
+        getReqData($attrDefPath, 'attribute');
+    }
+}
+
+sub filterFAPIAttrs
+{
+    
+    foreach my $rAttr ( sort ( keys %reqAttrsList))
+    {
+        my $attrDefPath = '/attributes/attribute/id[text()=\'ATTR_'.$rAttr.'\']/ancestor::attribute';
         getReqData($attrDefPath, 'attribute');
     }
 }
@@ -231,7 +248,6 @@ sub getReqData
             if( $nodeEle->nodeName eq "attribute")
             {
                 $attrID = $nodeEle->findvalue('id');
-
                 if ( !exists $reqAttrsList{$attrID} )
                 {
                     next;

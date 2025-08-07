@@ -193,7 +193,7 @@
         </simpleType>
     </attribute>
 
-        <enumerationType>
+    <enumerationType>
         <default>SBEFIFO</default>
         <description>
             Enumeration indicating the current backend sbefifo/direct access
@@ -211,7 +211,6 @@
 
     <attribute>
         <description>Type of the current hardware access method</description>
-        <hasStringConversion></hasStringConversion>
         <id>HW_ACCESS_METHOD</id>
         <no_export></no_export>
         <persistency>volatile</persistency>
@@ -222,6 +221,19 @@
                 <id>HW_ACCESS_METHOD</id>
             </enumeration>
             <uint8_t></uint8_t>
+        </simpleType>
+        <writeable></writeable>
+    </attribute>
+
+    <attribute>
+        <description>Hardware access pointer</description>
+        <hasStringConversion></hasStringConversion>
+        <id>HW_ACCESS_PTR</id>
+        <no_export></no_export>
+        <persistency>volatile</persistency>
+        <readable></readable>
+        <simpleType>
+            <uint32_t></uint32_t>
         </simpleType>
         <writeable></writeable>
     </attribute>

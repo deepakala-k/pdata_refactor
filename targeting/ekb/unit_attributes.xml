@@ -1,11 +1,11 @@
 <!-- IBM_PROLOG_BEGIN_TAG                                                   -->
 <!-- This is an automatically generated prolog.                             -->
 <!--                                                                        -->
-<!-- $Source: src/usr/targeting/common/xmltohb/ekb_customized_attrs.xml $   -->
+<!-- $Source: hwpf/fapi2/xml/attribute_info/unit_attributes.xml $           -->
 <!--                                                                        -->
-<!-- OpenPOWER HostBoot Project                                             -->
+<!-- OpenPOWER EKB Project                                                  -->
 <!--                                                                        -->
-<!-- Contributors Listed Below - COPYRIGHT 2017,2024                        -->
+<!-- COPYRIGHT 2015,2021                                                    -->
 <!-- [+] International Business Machines Corp.                              -->
 <!--                                                                        -->
 <!--                                                                        -->
@@ -23,33 +23,32 @@
 <!--                                                                        -->
 <!-- IBM_PROLOG_END_TAG                                                     -->
 <attributes>
-
-<!-- =====================================================================
-     Contains the definition of temporary FW defaults for FAPI attributes
-     (from the EKB repo) needing a default.  Each FAPI attribute should already
-     be defined elsewhere in an attribute XML file.
-     <attribute>
-         <id>...</id>
-         <default>...</default>
-     </attribute>
-
-     These definitions should be removed and replaced with permanent
-     definitions elsewhere prior to shipping code that uses them.
-
-     Examples:
-     <attribute>
-         <id>ATTR_NEW_FW_ATTR_DEF</id>
-         <default>5</default>
-     </attribute>
-
-     <attribute>
-         <id>ATTR_NEW_FW_ATTR_WO_DEFAULT_DEF</id>
-     </attribute>
-
-     <attribute>
-         <id>ATTR_NEW_FW_ATTR_ARRAY_DEF</id>
-         <default>9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20</default>
-     </attribute>
-     ================================================================= -->
-
+  <!-- ******************************************************************************** -->
+  <attribute>
+    <id>ATTR_CHIP_UNIT_POS</id>
+    <targetType>
+      TARGET_TYPE_CORE, TARGET_TYPE_EX, TARGET_TYPE_EQ,
+      TARGET_TYPE_MCS, TARGET_TYPE_MCA, TARGET_TYPE_MCBIST, TARGET_TYPE_MI, TARGET_TYPE_DMI,
+      TARGET_TYPE_MC, TARGET_TYPE_OMI, TARGET_TYPE_OMIC, TARGET_TYPE_MCC,
+      TARGET_TYPE_XBUS, TARGET_TYPE_OBUS,
+      TARGET_TYPE_OBUS_BRICK,
+      TARGET_TYPE_SBE, TARGET_TYPE_PPE, TARGET_TYPE_PERV,
+      TARGET_TYPE_PEC, TARGET_TYPE_PHB, TARGET_TYPE_CAPP,
+      TARGET_TYPE_MBA, TARGET_TYPE_ABUS, TARGET_TYPE_L4,
+      TARGET_TYPE_MEM_PORT,
+      TARGET_TYPE_NMMU,
+      TARGET_TYPE_PAU,
+      TARGET_TYPE_IOHS,
+      TARGET_TYPE_PAUC,
+      TARGET_TYPE_IOLINK
+    </targetType>
+    <description>
+      A unit's position within the chip with respect to similar units.
+      Note that this value is relative to the parent chip, not a parent unit.
+      This data is from the MRW.
+    </description>
+    <valueType>uint8</valueType>
+    <platInit/>
+  </attribute>
+  <!-- ******************************************************************************** -->
 </attributes>

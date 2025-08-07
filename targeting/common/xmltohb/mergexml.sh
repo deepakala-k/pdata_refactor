@@ -21,12 +21,24 @@
 # permissions and limitations under the License.
 #
 # IBM_PROLOG_END_TAG
-first_line=$(grep -m1 -v '^[[:space:]]*$' "$1")
+# first_line=$(grep -m1 -v '^[[:space:]]*$' "$1")
 
-if [ "$first_line" != "<attributes>" ]; then
-    echo "<attributes>"
-    cat "$@" | grep -v "<attributes>" | grep -v "</attributes>"
-    echo "</attributes>"
-else
-    cat "$@"
-fi
+# if [ "$first_line" != "<attributes>" ]; then
+#     echo "<attributes>"
+#     cat "$@" | grep -v "<attributes>" | grep -v "</attributes>"
+#     echo "</attributes>"
+# else
+#     cat "$@"
+# fi
+
+# Usage: ./merge_attributes.sh file1.xml file2.xml ... > merged.xml
+echo "<attributes>"
+
+for file in "$@"; do
+    # Remove XML declaration, <attributes>, and </attributes> tags
+    grep -v '<?xml' "$file" | \
+    grep -v '<attributes>' | \
+    grep -v '</attributes>'
+done
+
+echo "</attributes>"

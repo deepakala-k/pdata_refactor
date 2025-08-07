@@ -1,0 +1,246 @@
+<!-- IBM_PROLOG_BEGIN_TAG                                                   -->
+<!-- This is an automatically generated prolog.                             -->
+<!--                                                                        -->
+<!-- $Source: chips/p10/procedures/xml/attribute_info/p10_runn_attributes.xml $ -->
+<!--                                                                        -->
+<!-- OpenPOWER EKB Project                                                  -->
+<!--                                                                        -->
+<!-- COPYRIGHT 2018,2021                                                    -->
+<!-- [+] International Business Machines Corp.                              -->
+<!--                                                                        -->
+<!--                                                                        -->
+<!-- Licensed under the Apache License, Version 2.0 (the "License");        -->
+<!-- you may not use this file except in compliance with the License.       -->
+<!-- You may obtain a copy of the License at                                -->
+<!--                                                                        -->
+<!--     http://www.apache.org/licenses/LICENSE-2.0                         -->
+<!--                                                                        -->
+<!-- Unless required by applicable law or agreed to in writing, software    -->
+<!-- distributed under the License is distributed on an "AS IS" BASIS,      -->
+<!-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        -->
+<!-- implied. See the License for the specific language governing           -->
+<!-- permissions and limitations under the License.                         -->
+<!--                                                                        -->
+<!-- IBM_PROLOG_END_TAG                                                     -->
+<attributes>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_MODE</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>
+    Set to indicate clock-start/instruction execution in cache-contained
+    or chip-contained mode will be managed by runn
+    Provided by: platform (FW platforms init to OFF)
+  </description>
+  <valueType>uint8</valueType>
+  <platInit/>
+  <enum>
+    OFF = 0x0,
+    ON = 0x1
+  </enum>
+  <writeable/>
+  <mrwHide/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_SRESET_THREADS_BVEC</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>
+    Bitvector of which threads to sreset via decrementer in cache-contained or
+    chip-contained mode
+    Bitmap: 0bxxxx00000000
+    T0 -------'|||
+    T1 --------'||
+    T2 ---------'|
+    T3 ----------'
+  </description>
+  <valueType>uint8</valueType>
+  <enum>
+    T0 = 0x80,
+    T1 = 0x40,
+    T2 = 0x20,
+    T3 = 0x10
+  </enum>
+  <initToZero/>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_CYCLE_COUNT</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>
+    Base number of clock cycles to execute in runn mode
+    In cache-contained, this is the base number of clock cycles to execute per quad
+    In chip-contained, this is the base number of clock cycles to execute per chip
+    Consumed by: p10_runn HWP (Cronus platform only, chip/cache-contained mode)
+    Provided by: platform (FW platforms init to 0)
+  </description>
+  <valueType>uint64</valueType>
+  <platInit/>
+  <initToZero/>
+  <mrwHide/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_CHIP_CYCLE_OFFSET</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Number of clock cycles to offset each chip from the base value in chip/cache-contained
+    Consumed by: p10_runn HWP (Cronus platform only, chip/cache-contained mode)
+    Provided by: platform (FW platforms init to 0)
+  </description>
+  <valueType>uint64</valueType>
+  <initToZero/>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_QUAD_CYCLE_OFFSET</id>
+  <targetType>TARGET_TYPE_EQ</targetType>
+  <description>
+    Number of clock cycles to offset each quad from the base value in cache-contained
+    Consumed by: p10_runn HWP (Cronus platform only, cache-contained mode)
+    Provided by: platform (FW platforms init to 0)
+  </description>
+  <valueType>uint64</valueType>
+  <initToZero/>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_CORE_CYCLE_OFFSET</id>
+  <targetType>TARGET_TYPE_CORE</targetType>
+  <description>
+    Number of clock cycles to offset each core within a quad in cache-contained
+    Consumed by: p10_runn HWP (Cronus platform only, cache-contained mode)
+    Provided by: platform (FW platforms init to 0)
+  </description>
+  <valueType>uint8</valueType>
+  <initToZero/>
+  <writeable/>
+  <enum>
+    0_CYCLES = 0x0,
+    1_CYCLE  = 0x1,
+    2_CYCLES = 0x2,
+    3_CYCLES = 0x3,
+    4_CYCLES = 0x4
+  </enum>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_DO_CONFIG_CHECKS</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>
+    Perform RUNN configuration checks after starting RUNN counter(s):
+     - confirm RUNN clocks are running
+     - (if chip-contained) confirm all clocks started in-phase by comparing
+       clock controller phase-counter values captured at clock start
+    Note: this may compromise cycle-reproduceability!
+  </description>
+  <valueType>uint8</valueType>
+  <initToZero/>
+  <enum>
+    OFF = 0x0,
+    ON  = 0x1
+  </enum>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_USE_QME_TIMEBASE</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>
+    Use QME-sourced, cycle-reproducible timebase ("high-precision" mode)
+    instead of PC-internal "standalone" mode timebase (also cycle-reproducible).
+  </description>
+  <valueType>uint8</valueType>
+  <initToZero/>
+  <enum>
+    OFF = 0x0,
+    ON  = 0x1
+  </enum>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_STOP_ON_XSTOP</id>
+  <targetType>TARGET_TYPE_EQ</targetType>
+  <description>
+    Stop OPCG RUNN counter and clocks when a checkstop occurs.
+  </description>
+  <valueType>uint8</valueType>
+  <enum>
+    OFF = 0x0,
+    ON  = 0x1
+  </enum>
+  <default>ON</default>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_MASTER_SEED</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Master seed used to seed the RNG for generating thread seeds for
+    exercisers.
+  </description>
+  <valueType>uint64</valueType>
+  <initToZero/>
+  <platInit/>
+  <mrwHide/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_CORE_SEED_SELECT</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Specify a core whose exerciser thread seeds should be duplicated across all
+    other cores. Example: ATTR_RUNN_CORE_SEED_SELECT=CORE05, then when
+    generating exerciser seeds, every other core would first seed the RNG w/
+    ATTR_RUNN_MASTER_SEED and then discard values until CORE05 before
+    generating per-thread seeds.
+
+    The default behavior is to randomize each core independently by using
+    ATTR_RUNN_CORE_SEED_SELECT=RANDOM.
+  </description>
+  <valueType>uint8</valueType>
+  <enum>
+    RANDOM=0xff,
+    CORE00=0x00, CORE08=0x08, CORE16=0x10, CORE24=0x18,
+    CORE01=0x01, CORE09=0x09, CORE17=0x11, CORE25=0x19,
+    CORE02=0x02, CORE10=0x0a, CORE18=0x12, CORE26=0x1a,
+    CORE03=0x03, CORE11=0x0b, CORE19=0x13, CORE27=0x1b,
+    CORE04=0x04, CORE12=0x0c, CORE20=0x14, CORE28=0x1c,
+    CORE05=0x05, CORE13=0x0d, CORE21=0x15, CORE29=0x1d,
+    CORE06=0x06, CORE14=0x0e, CORE22=0x16, CORE30=0x1e,
+    CORE07=0x07, CORE15=0x0f, CORE23=0x17, CORE31=0x1f
+  </enum>
+  <default>RANDOM</default>
+  <platInit/>
+  <mrwHide/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_THREAD_SEEDS</id>
+  <targetType>TARGET_TYPE_CORE</targetType>
+  <description>
+    Actual exerciser seed values for each thread. Can be specified via
+    attribute seedfile and qualified with 'CONST'.
+  </description>
+  <valueType>uint64</valueType>
+  <array>4</array>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_RUNN_STAGGER_DELAY</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>
+	It is important to stagger EQ start to prevent massive di/dt voltage
+	droops upon sreset. We add this parametrizable delay to set the time
+	between issuing OPCG go across each EQ. Measured in nanoseconds.
+  </description>
+  <valueType>uint64</valueType>
+  <default>
+    0x0000000004C4B400	  
+  </default>
+</attribute>
+<!-- ********************************************************************** -->
+</attributes>

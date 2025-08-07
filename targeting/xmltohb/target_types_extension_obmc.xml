@@ -1,30 +1,14 @@
 <attributes>
     <targetTypeExtension>
         <attribute>
-            <id>TYPE</id>
-        </attribute>
-        <attribute>
-            <id>HWAS_STATE</id>
-        </attribute>
-        <attribute>
             <id>PHYS_DEV_PATH</id>
         </attribute>
         <attribute>
             <id>PHYS_BIN_PATH</id>
         </attribute>
-        <attribute>
-            <id>FAPI_NAME</id>
-        </attribute>
         <id>base</id>
     </targetTypeExtension>
     <targetTypeExtension>
-        <attribute>
-            <id>FUSED_CORE_OPTION</id>
-        </attribute>
-        <attribute>
-            <id>ISTEP_MODE</id>
-            <default>FALSE</default>
-        </attribute>
         <attribute>
             <id>ALLOW_ATTR_OVERRIDES</id>
         </attribute>
@@ -48,13 +32,6 @@
         <parent>sys</parent>
     </targetTypeExtension>
     <targetTypeExtension>
-        <id>chip-processor-power10</id>
-        <parent>chip-processor</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <attribute>
-            <id>PROC_MASTER_TYPE</id>
-        </attribute>
         <attribute>
             <id>EQ_GARD</id>
         </attribute>
@@ -71,27 +48,20 @@
             <id>FSI_DEVICE_PATH</id>
         </attribute>
         <attribute>
-            <id>HW_ACCESS_METHOD_BACKEND</id>
+            <id>HW_ACCESS_METHOD</id>
+        </attribute>
+        <attribute>
+            <id>HW_ACCESS_PTR</id>
         </attribute>
         <id>chip-processor</id>
         <parent>chip</parent>
     </targetTypeExtension>
     <targetTypeExtension>
         <attribute>
-            <id>MRU_ID</id>
-        </attribute>
-        <attribute>
-            <id>CHIP_ID</id>
-        </attribute>
-        <attribute>
             <id>LOCATION_CODE</id>
         </attribute>
         <id>chip</id>
         <parent>base</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-core-power10</id>
-        <parent>unit-core</parent>
     </targetTypeExtension>
     <targetTypeExtension>
         <attribute>
@@ -102,101 +72,10 @@
     </targetTypeExtension>
     <targetTypeExtension>
         <attribute>
-            <id>MRU_ID</id>
-        </attribute>
-        <attribute>
             <id>CHIPLET_ID</id>
         </attribute>
         <id>unit</id>
         <parent>base</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-eq-power10</id>
-        <parent>unit-eq</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-eq</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-fc-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-perv-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-perv</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-pauc-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-pec-power10</id>
-        <parent>unit-pec</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-pec</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-phb-power10</id>
-        <parent>unit-phb</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-phb</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-nmmu-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-iohs-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-pau-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-mc-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-mi-power10</id>
-        <parent>unit-mi</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-mi</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-mcc-power10</id>
-        <parent>unit-mcc</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-mcc</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-omic-power10</id>
-        <parent>unit-omic</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-omic</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-omi-power10</id>
-        <parent>unit-omi</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-omi</id>
-        <parent>unit</parent>
     </targetTypeExtension>
     <targetTypeExtension>
         <id>chip-ocmb</id>
@@ -209,50 +88,10 @@
         <attribute>
             <id>FSI_DEVICE_PATH</id>
         </attribute>
-        <parent>chip</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>chip-ocmb-planar</id>
-        <parent>chip</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-mem_port</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>lcard-dimm-ddimm</id>
-        <parent>lcard-dimm</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>lcard-dimm-ddimm4u</id>
-        <parent>lcard-dimm</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>lcard-dimm-ddr4</id>
-        <parent>lcard-dimm</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-ddr</id>
-        <parent>lcard-dimm</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-ddr4-jedec</id>
-        <parent>lcard-dimm</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-ddr5-jedec</id>
-        <parent>lcard-dimm</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>lcard-dimm</id>
-        <parent>card</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
         <attribute>
-            <id>LOCATION_CODE</id>
-        </attribute>
-        <id>card</id>
-        <parent>base</parent>
+            <id>HW_ACCESS_PTR</id>
+        </attribute>        
+        <parent>chip</parent>
     </targetTypeExtension>
     <targetTypeExtension>
         <attribute>
@@ -260,68 +99,5 @@
         </attribute>
         <id>chip-bmc-ast2600</id>
         <parent>sp</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>sp</id>
-        <parent>base</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-nx-power10</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-occ-power10</id>
-        <parent>occ</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>occ</id>
-        <parent>unit</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>chip-tpm-cectpm</id>
-        <parent>chip</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>chip-NPCT750AAC</id>
-        <parent>chip-tpm-cectpm</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>unit-abus-power10</id>
-        <parent>unit-obus-smpgroup</parent>
-    </targetTypeExtension>
-    <targetTypeExtension>
-        <id>asic</id>
-        <parent>base</parent>
-    </targetTypeExtension>
-    <!-- Generic I2C Device : Used to represent small components that require
-                              i2c access, but very little other support -->
-    <targetTypeExtension>
-        <id>generic_i2c_device</id>
-        <parent>asic</parent>
-    </targetTypeExtension>
-    <!-- This special GPIO_EXPANDER target adapts the MRW to Hostboot's specific
-         GENERIC_I2C_DEVICE target.  All attributes should be declared
-         against the parent target. -->
-   <targetTypeExtension>
-       <id>chip-PCA9554</id>
-       <parent>generic_i2c_device</parent>
-   </targetTypeExtension>
-   <!-- This special ADC target adapts the MRW to Hostboot's specific
-                GENERIC_I2C_DEVICE target.  All attributes should be declared
-        against the parent target. -->
-   <targetTypeExtension>
-       <id>chip-adc</id>
-       <parent>generic_i2c_device</parent>
-   </targetTypeExtension>
-    <targetTypeExtension>
-        <id>pmic</id>
-        <parent>asic</parent>
-    </targetTypeExtension>
-    <!-- This special PMIC target adapts the MRW to Hostboot's specific PMIC
-         target.  All attributes should be declared against the parent
-         target. -->
-    <targetTypeExtension>
-        <id>chip-vreg-generic</id>
-        <parent>pmic</parent>
     </targetTypeExtension>
 </attributes>

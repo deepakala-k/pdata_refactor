@@ -1,0 +1,429 @@
+<!-- IBM_PROLOG_BEGIN_TAG                                                   -->
+<!-- This is an automatically generated prolog.                             -->
+<!--                                                                        -->
+<!-- $Source: chips/p10/procedures/xml/attribute_info/p10_pervasive_attributes.xml $ -->
+<!--                                                                        -->
+<!-- OpenPOWER EKB Project                                                  -->
+<!--                                                                        -->
+<!-- COPYRIGHT 2015,2023                                                    -->
+<!-- [+] International Business Machines Corp.                              -->
+<!--                                                                        -->
+<!--                                                                        -->
+<!-- Licensed under the Apache License, Version 2.0 (the "License");        -->
+<!-- you may not use this file except in compliance with the License.       -->
+<!-- You may obtain a copy of the License at                                -->
+<!--                                                                        -->
+<!--     http://www.apache.org/licenses/LICENSE-2.0                         -->
+<!--                                                                        -->
+<!-- Unless required by applicable law or agreed to in writing, software    -->
+<!-- distributed under the License is distributed on an "AS IS" BASIS,      -->
+<!-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        -->
+<!-- implied. See the License for the specific language governing           -->
+<!-- permissions and limitations under the License.                         -->
+<!--                                                                        -->
+<!-- IBM_PROLOG_END_TAG                                                     -->
+<attributes>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_PG_MVPD</id>
+  <targetType>TARGET_TYPE_PERV</targetType>
+  <description>
+    Chiplet partial good information, direct from module VPD PG keyword
+  </description>
+  <valueType>uint32</valueType>
+  <platInit/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_PG</id>
+  <targetType>TARGET_TYPE_PERV</targetType>
+  <description>
+    Chiplet partial good information to be consumed by IPL HWP code.
+    This attribute logically represents the combination of VPD PG plus
+    any additional runtime deconfiguration to be applied on the current IPL.
+  </description>
+  <valueType>uint32</valueType>
+  <default>0xFFFFFFFF</default>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_ECO_MODE</id>
+  <targetType>TARGET_TYPE_CORE</targetType>
+  <description>
+    Dictates whether core target should be configured as an extended cache only
+      DISABLED - core + MMA/L2/L3 enabled, target supports instruction execution
+      ENABLED - only L3 enabled, target supports extended cache operation only
+  </description>
+  <valueType>uint8</valueType>
+  <enum>DISABLED = 0x0, ENABLED = 0x1</enum>
+  <default>DISABLED</default>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_PROC_SBE_MASTER_CHIP</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Indicates if SBE on this chip is serving as hostboot drawer master
+  </description>
+  <valueType>uint8</valueType>
+  <enum>FALSE = 0x0,TRUE = 0x1</enum>
+  <writeable/>
+  <platInit/>
+  <mrwHide/><!--  Firmware sets this based on the boot processor -->
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_SECTOR_BUFFER_STRENGTH</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>Sector buffer strength</description>
+  <valueType>uint8</valueType>
+  <platInit/>
+  <default>0</default>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_NDL_MESHCTRL_SETUP</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>Control NDL training:meshctrl setup</description>
+  <valueType>uint8</valueType>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_MC_PLL_BUCKET</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>MC0, MC1, MC2, MC3 pll bucket selection</description>
+  <valueType>uint8</valueType>
+  <array>4</array>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_IOHS_PLL_BUCKET</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>IOHS pll bucket selection</description>
+  <valueType>uint8</valueType>
+  <array>8</array>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_FILTER_PLL_BUCKET</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>Filter pll bucket selection</description>
+  <valueType>uint8</valueType>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_PCI_PLL_BUCKET</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>PCI pll bucket selection</description>
+  <valueType>uint8</valueType>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_CP_PLLTODFLT_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    To skip the locking sequence and check for lock of CP TOD Filter PLL
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_CP_PLLNESTFLT_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    To skip the locking sequence and check for lock of CP Nest Filter PLL
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_CP_PLLIOFLT_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    To skip the locking sequence and check for lock of CP IO Filter PLL
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_CP_PLLIOSSFLT_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    To skip the locking sequence and check for lock of CP IO Spread Spectrum Filter PLL
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_PAU_DPLL_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Skip locking sequence and check for lock of PAU DPLL
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_NEST_DPLL_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Skip locking sequence and check for lock of NEST DPLL
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_IO_TANK_PLL_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP,TARGET_TYPE_OCMB_CHIP</targetType>
+  <description>
+    Skip locking sequence and check for lock of IO PLLs
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_SKEWADJ_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Keep skew adjust logic between nest, cores and caches bypassed
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <platInit/>
+  <initToZero/>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_SKEWADJ_CORE_PDLY_OVERRIDE</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Skew Adjust: Set fixed value for core-cache delay
+    bit 0: override enabled
+    bits 12:15: override value
+    Taken from CP00 MK keyword in VPD
+  </description>
+  <valueType>uint16</valueType>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_SKEWADJ_CACHE_PDLY_OVERRIDE</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Skew Adjust: Set fixed value for cache-nest delay
+    bit 0: override enabled
+    bits 12:15: override value
+    Taken from CP00 MK keyword in VPD
+  </description>
+  <valueType>uint16</valueType>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_DCADJ_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Keep core duty cycle adjust logic bypassed
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <platInit/>
+  <initToZero/>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_DCADJ_DCC_OVERRIDE</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Duty Cycle Adjust: Set fixed value for duty cycle control
+    bit 0: override enabled
+    bits 8:15: override value
+    Taken from CP00 MK keyword in VPD
+  </description>
+  <valueType>uint16</valueType>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_DCADJ_TARGET_OVERRIDE</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Duty Cycle Adjust: Set duty cycle target different from 50%
+    bit 0: override enabled
+    bits 8:15: override value (signed integer, delta from 50%)
+    Taken from CP00 MK keyword in VPD
+  </description>
+  <valueType>uint16</valueType>
+  <writeable/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_ECID</id>
+  <targetType>TARGET_TYPE_PROC_CHIP, TARGET_TYPE_MEMBUF_CHIP, TARGET_TYPE_OCMB_CHIP</targetType>
+  <description>Populated by HWP called during IPL.
+  PROC, MEMBUF: Bits 0 to 63 of the ECID in array entry 0 and bits 64 to 127 in ECID array entry 1
+  OCMB: Explorer: Data Inserted HIGH:LOW, ex. ATTR_ECID[0] = [PE_DATA_3:PE_DATA_2:PE_DATA_1:PE_DATA_0]
+  OCMB: Gemini: 64-bit ECID inserted in ATTR_ECID[0]
+  TK/FIXME/TODO: This needs to be made larger to support the entire Explorer ECID.
+  </description>
+  <valueType>uint64</valueType>
+  <writeable/>
+  <odmVisable/>
+  <odmChangeable/>
+  <array>2</array>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_LPC_CONSOLE_CNFG</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>Indicates if LPC console is enabled on system</description>
+  <valueType>uint8</valueType>
+  <enum>ENABLE = 0x1,DISABLE = 0x0</enum>
+  <default>ENABLE</default>
+  <platInit/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_SBE_SYS_CONFIG</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>System Configuration information, which indicates the functional
+  state for each processor, on the system. Each bit represents topology id of
+  a processor that is present.
+  </description>
+  <valueType>uint64</valueType>
+  <platInit/>
+  <mrwHide/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_EC_GARD</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>Capturing EC Gard Value</description>
+  <valueType>uint32</valueType>
+  <platInit/>
+  <mrwHide/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_CLOCKSTOP_ON_XSTOP</id>
+  <targetType>TARGET_TYPE_PROC_CHIP,TARGET_TYPE_OCMB_CHIP</targetType>
+  <description>
+  Set up the chip so that all chiplet clocks are
+  automatically stopped in case of a checkstop. Possible enum values:
+  DISABLED - Don't stop clocks on any error
+  STOP_ON_XSTOP - Stop on either an xstop in the local chiplet
+     or on a system xstop coming in from outside the chiplet
+  STOP_ON_XSTOP_AND_SPATTN - Like above, plus special attentions
+  STOP_ON_STAGED_XSTOP - Stop _only_ on an incoming staged system xstop
+     to ensure that all chiplets stop in the same instant. This will result
+     in a longer delay between the original error and the clocks stopping.
+  </description>
+  <valueType>uint8</valueType>
+  <enum>DISABLED = 0x00, STOP_ON_XSTOP = 0x7B, STOP_ON_XSTOP_AND_SPATTN = 0x5B, STOP_ON_STAGED_XSTOP = 0xFD</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+  <mrwHide/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_XSTOP_ON_SPATTN</id>
+  <targetType>TARGET_TYPE_SYSTEM</targetType>
+  <description>
+    Setup the option to checkstop on special attentions.
+  </description>
+  <valueType>uint8</valueType>
+  <enum>DISABLED = 0x00, ENABLED = 0x01</enum>
+  <writeable/>
+  <platInit/>
+  <initToZero/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_BOOT_PAU_DPLL_BYPASS</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>
+    Force the SBE to boot with PAU DPLL in bypass
+  </description>
+  <valueType>uint8</valueType>
+  <enum>BYPASS = 0x1, NO_BYPASS = 0x0</enum>
+  <default>BYPASS</default>
+  <writeable/>
+  <platInit/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_ORIG_FIR_SETTINGS_ACTION0</id>
+  <targetType>TARGET_TYPE_CORE</targetType>
+  <description>This attribute is saving the fir settings for action0. During
+          different points of the IPL we want to turn off unit checkstops.
+          This attribute saves the original value.</description>
+  <valueType>uint64</valueType>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_ORIG_FIR_SETTINGS_ACTION1</id>
+  <targetType>TARGET_TYPE_CORE</targetType>
+  <description>This attribute is saving the fir settings for action1. During
+          different points of the IPL we want to turn off unit checkstops.
+          This attribute saves the original value.</description>
+  <valueType>uint64</valueType>
+  <writeable/>
+</attribute>
+<!-- ********************************************************************** -->
+<attribute>
+  <id>ATTR_SECUREBOOT_PROTECT_DECONFIGURED_TPM</id>
+  <targetType>TARGET_TYPE_PROC_CHIP</targetType>
+  <description>To deconfigure a TPM in a secure system - 01 to set TDP bit</description>
+  <valueType>uint8</valueType>
+  <platInit/>
+</attribute>
+<!-- ********************************************************************** -->
+</attributes>

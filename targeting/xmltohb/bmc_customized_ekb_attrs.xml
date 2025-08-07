@@ -1,0 +1,17 @@
+<attributes>
+    <!-- =====================================================================
+     Contains the definition of temporary FW defaults for ekb (FAPI) attributes
+     needing a default.  Each FAPI attribute should already be defined
+     elsewhere in an attribute XML file.
+     <attribute>
+         <id>...</id>
+         <default>...</default>
+     </attribute>
+     ================================================================= -->
+
+    <attribute>
+        <id>ATTR_SBE_SELECT_EX_POLICY</id>
+        <default>HB_MAX_FOOTPRINT</default>
+    </attribute>
+
+</attributes>

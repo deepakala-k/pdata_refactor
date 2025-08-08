@@ -30,11 +30,11 @@
 #
 # Usage:
 #
-#    updatetargetxml --hb=target_types_hb.xml --common=target_types.xml
+#    updatetargetxml --plat=target_types_bmc.xml --common=target_types.xml
 #
 # Purpose:
 #
-#   This perl script processes the target_types_hb.xml file to find the
+#   This perl script processes the target_types_bmc.xml file to find the
 #   <targetTypeExtension> tags, and update target_types.xml if needed.
 #   The updated target_types.xml is written to the console.
 #
@@ -45,25 +45,25 @@ use Data::Dumper;
 
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
-my $hb = "";
+my $plat = "";
 my $common = "";
 my $usage = 0;
 use Getopt::Long;
-GetOptions( "hb:s"       => \$hb,
+GetOptions( "plat:s"       => \$plat,
             "common:s"   => \$common,
             "help"       => \$usage, );
 
-if ($usage || ($hb eq "") || ($common eq ""))
+if ($usage || ($plat eq "") || ($common eq ""))
 {
     display_help();
     exit 0;
 }
 
-open (FH, "<$hb") ||
-    die "ERROR: unable to open $hb\n";
+open (FH, "<$plat") ||
+    die "ERROR: unable to open $plat\n";
 close (FH);
 
-my $generic = XMLin("$hb", ForceArray=>1);
+my $generic = XMLin("$plat", ForceArray=>1);
 
 open (FH, "<$common") ||
     die "ERROR: unable to open $common\n";
@@ -75,6 +75,22 @@ my @NewAttr;
 foreach my $Extension ( @{$generic->{targetTypeExtension}} )
 {
     my $id = $Extension->{id}->[0];
+
+    # if there is a targetTypeExtension that does not have a targetType,
+    # it does not throw any error, nor adds those attributes. If it prints an error,
+    # the error gets into the output file, it can die, but in that case, I find the 
+    # below 2 targets listed. it comes from target_types_ekb. So unable to enable the 
+    # below portion
+    if(! exists $generic1->{targetType}->{$id})
+    {
+        # ERROR: targetTypeExtension HASH(0x555555d88cb0) does not have a targetType to map
+        # ERROR: targetTypeExtension unit-mds-ctlr does not have a targetType to map
+        # TODO: check if the parent is different, then trigger an error.
+        # TODO: Also remove the repeated ones.
+
+        #die "ERROR: targetTypeExtension $id does not have a targetType to map\n";
+    }
+
     foreach my $attr ( @{$Extension->{attribute}} )
     {
         my $attribute_id = $attr->{id}->[0];
@@ -142,9 +158,9 @@ sub display_help
 Usage:
 
     $scriptname --help
-    $scriptname --hb=hbfname --hb=commonfname
-        --hb=hbfname
-              hbfname is the complete pathname of the target_types_hb.xml file
+    $scriptname --plat=platfname --common=commonfname
+        --plat=platfname
+              platfname is the complete pathname of the target_types_plat.xml file
         --common=commonfname
               commonfname is the complete pathname of the target_types.xml file
 \n";

@@ -82,12 +82,15 @@ my $cfgIncludeFspAttributes = 0;
 my $CfgSMAttrFile = "";
 my $cfgAddVersionPage = 0;
 my $nonSyncAttribFile = "";
+my $filterAttrFile = "";
+my $filterTargetFile = "";
 
 my $cfgBiosXmlFile = undef;
 my $cfgBiosSchemaFile = undef;
 my $cfgBiosOutputFile = undef;
 
 my $MAX_4_BYTE_VALUE = 0xFFFFFFFF;
+my $buildBmc = 0;
 
 GetOptions("hb-xml-file:s" => \$cfgHbXmlFile,
            "src-output-dir:s" =>  \$cfgSrcOutputDir,
@@ -104,6 +107,9 @@ GetOptions("hb-xml-file:s" => \$cfgHbXmlFile,
            "bios-schema-file:s" => \$cfgBiosSchemaFile,
            "bios-output-file:s" => \$cfgBiosOutputFile,
            "non-sync-attrib-file:s" => \$nonSyncAttribFile,
+           "filter-attr-file:s" => \$filterAttrFile,
+           "filter-target-file:s" => \$filterTargetFile,
+           "build-bmc!" => \$buildBmc,
            "help" => \$cfgHelp,
            "man" => \$cfgMan,
            "verbose" => \$cfgVerbose ) || pod2usage(-verbose => 0);
@@ -137,6 +143,8 @@ if($cfgVerbose)
     print STDOUT "bios-xml-file = $cfgBiosXmlFile\n";
     print STDOUT "bios-output-file = $cfgBiosOutputFile\n";
     print STDOUT "Non Sync Attributes file = $nonSyncAttribFile\n";
+    print STDOUT "filter-attr-file = $filterAttrFile\n";
+    print STDOUT "filter-target-file = $filterTargetFile\n";
 }
 
 ################################################################################
@@ -260,6 +268,17 @@ validateTargetTypesExtension($allAttributes);
 # will be used for very specific tasks, like computing associations
 my $attributes = dclone $allAttributes;
 my %virtualAttrIds = ();
+
+# if a attribute filter file is provided, remove the attributes that are not
+# present in the set.Filter it before doing any operations.
+# $allAttributes to contain the actual list
+
+# TODO, need to check if $allAttributes also needs to be filtered??
+if ($filterAttrFile ne "")
+{
+    $attributes = filterAttributes($attributes, $filterAttrFile);
+}
+
 for my $attr (reverse 0..((scalar @{$attributes->{attribute}})-1) )
 {
     if(exists $attributes->{attribute}[$attr]->{virtual})
@@ -1960,7 +1979,7 @@ print $outFile <<VERBATIM;
 
 // Targeting component
 #include <builtins.h>
-#include <targeting/common/attributes.H>
+@{[ $buildBmc ? "" : "#include <targeting/common/attributes.H>\n" ]}
 #include <targeting/common/entitypath.H>
 
 //******************************************************************************
@@ -2690,6 +2709,9 @@ sub writeAttrIdNameHFile
     print $outFile "// Attribute ID -> Attribute Name Map File\n";
 
     # includes
+    if($buildBmc) {
+     print $outFile "#include <cstdint>\n";
+    }
     print $outFile "#include <map>\n\n";
 
     print $outFile "extern const std::map<uint32_t,const char*>g_nonRwAttrIdToNameMap;\n";
@@ -2920,6 +2942,8 @@ print $outFile <<VERBATIM;
 #if __cplusplus >= 201103L
 #include <array>
 #endif
+
+@{[ $buildBmc ? "#include <targeting/xmltohb/attributestructs.H>" : "" ]}
 
 VERBATIM
 
@@ -5219,7 +5243,7 @@ sub getAttributeIdEnumeration {
             else
             {
                 croak("Error: AttributeId $attribute->{id} "
-                    . "defined multiple times");
+                    . "defined multiple times\n\n");
             }
         }
         else
@@ -8405,6 +8429,33 @@ print SM_TARGET_FILE"
 </attributes>";
 
     close(SM_TARGET_FILE);
+}
+
+sub filterAttributes {
+    my ($attr_hash, $lsv_file) = @_;
+
+    # Read allowed IDs from .lsv into a hash
+    my %allowed;
+    open my $fh, '<', $lsv_file or die "Cannot open $lsv_file: $!";
+    while (my $line = <$fh>) {
+        chomp $line;
+        next if $line =~ /^\s*#/;  # skip comment lines
+        next if $line eq '';       # skip empty lines
+        $allowed{$line} = 1;
+    }
+    close $fh;
+
+    # Filter the 'attribute' array in-place
+    if (exists $attr_hash->{attribute} && ref $attr_hash->{attribute} eq 'ARRAY') {
+        my @filtered = grep {
+            exists $_->{id} && $allowed{ $_->{id} }
+        } @{ $attr_hash->{attribute} };
+
+        $attr_hash->{attribute} = \@filtered;
+    }
+
+    # Return filtered hashref
+    return $attr_hash;
 }
 
 ################################################################################

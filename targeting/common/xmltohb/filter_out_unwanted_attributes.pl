@@ -85,6 +85,23 @@ sub usage
     exit (-1);
 }
 
+sub loadAllowedFilterList {
+    my ($filter_file, $allowed_list_ref, $filter_is_active_ref) = @_;
+
+    if ($filter_file) {
+        open my $fh, '<', $filter_file or die "Cannot open $filter_file: $!";
+        while (my $line = <$fh>) {
+            chomp $line;
+            next if $line =~ /^\s*#/;  # skip comment lines
+            next if $line eq '';       # skip empty lines
+            $allowed_list_ref->{$line} = 1;
+        }
+        close $fh;
+    }
+
+    # set the scalar behind the reference
+    $$filter_is_active_ref = scalar(keys %$allowed_list_ref) > 0;
+}
 
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
@@ -94,38 +111,26 @@ open (FH, "<$tgt_files[0]") ||
     die "ERROR: unable to open $tgt_files[0]\n";
 close (FH);
 
-open (FH, "<$tgt_files[1]") ||
-    die "ERROR: unable to open $tgt_files[1]\n";
-close (FH);
-
 my $fileCommon = XMLin("$tgt_files[0]");
-my $filePlatform = XMLin("$tgt_files[1]", ForceArray=>1);
 
-# Read allowed_attr IDs from .lsv into a hash
-my %allowed_attr;
-open my $fh, '<', $attr_filter_file or die "Cannot open $attr_filter_file: $!";
-while (my $line = <$fh>) {
-    chomp $line;
-    next if $line =~ /^\s*#/;  # skip comment lines
-    next if $line eq '';       # skip empty lines
-    $allowed_attr{$line} = 1;
+my $filePlatform;
+# check if the parameter is provided(optional input)
+if (defined $tgt_files[1])
+{
+    open (FH, "<$tgt_files[1]") ||
+        die "ERROR: unable to open $tgt_files[1]\n";
+    close (FH);
+    $filePlatform = XMLin("$tgt_files[1]", ForceArray=>1);
 }
-close $fh;
 
-my $attr_filter_is_active = scalar(keys %allowed_attr) > 0;
+# check if filter file is provided, update the list accordingly
+my %allowed_attr_list;
+my $attr_filter_is_active;
+loadAllowedFilterList($attr_filter_file, \%allowed_attr_list, \$attr_filter_is_active);
 
-# Read allowed_attr IDs from .lsv into a hash
-my %allowed_tgt;
-open my $fh, '<', $target_filter_file or die "Cannot open $target_filter_file: $!";
-while (my $line = <$fh>) {
-    chomp $line;
-    next if $line =~ /^\s*#/;  # skip comment lines
-    next if $line eq '';       # skip empty lines
-    $allowed_tgt{$line} = 1;
-}
-close $fh;
-
-my $tgt_filter_is_active = scalar(keys %allowed_tgt) > 0;
+my %allowed_tgt_list;
+my $tgt_filter_is_active;
+loadAllowedFilterList($target_filter_file, \%allowed_tgt_list, \$tgt_filter_is_active);
 
 # This loop will fetch all targetTypeExtension from platform target types xml
 # and push it in an array "@NewAttr"
@@ -283,7 +288,7 @@ foreach my $tgt
 
     if (!defined $tgt_xmls->{'targetType'}->{$tgt_type}
         && (!$tgt_filter_is_active || 
-        ($tgt_filter_is_active && !defined $allowed_tgt{$tgt_type})))
+        ($tgt_filter_is_active && !defined $allowed_tgt_list{$tgt_type})))
     {
         if($verbose)
         {
@@ -367,7 +372,7 @@ sub attrExistsAndAllowed {
     return 0 unless defined $tgt_xmls->{'targetType'}{$tgt}{attribute}{$attr};
     # filter file is not active, as it found the attribute return true
     return 1 unless $attr_filter_is_active;
-    return defined $allowed_attr{$attr};
+    return defined $allowed_attr_list{$attr};
 }
 
 #OUTPUT

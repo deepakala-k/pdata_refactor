@@ -31,6 +31,7 @@ mkdir -p "$GENDIR"
 
 # XML inputs
 XMLTOHB_ATTRIBUTES_TARGETS_MERGED_XML="attributes_targettype_merged.xml"
+XMLTOHB_MRW_ATTRIBUTES_TARGETS_MERGED_XML="mrw_attributes_targets_merged.xml"
 XMLTOHB_FAPI_XML="fapiattrs.xml"
 
 # Script files
@@ -212,10 +213,17 @@ for system_mrw_xml in $SYSTEMS_MRW_XML ; do
         -o "$GENDIR/${system_name}_bmc_mrw.xml"
 
     "$COMMON_XMLTOHB_REL_PATH/filter_out_unwanted_attributes.pl" --mrw-xml "$GENDIR/${system_name}_bmc_mrw.xml" \
-    --tgt-xml "$GENDIR/$XMLTOHB_SRC_TARGET_TYPES" \
-    --tgt-xml "$GENDIR/$XMLTOHB_SRC_TARGET_TYPES" \
+    --tgt-xml "$GENDIR/$XMLTOHB_FULL_TARGET_TYPES" \
     --filter-attr-file "${TARGETING_XMLTOHB_PROC_REL_PATH}/$filter_attr" \
     --filter-tgt-file "${TARGETING_XMLTOHB_PROC_REL_PATH}/$filter_target"
+
+    #remove empty lines created because of filtering and removing the attributes
+    grep -v '^[[:space:]]*$' "$GENDIR/${system_name}_bmc_mrw.xml.updated" > $GENDIR/${system_name}_bmc_mrw_filtered.xml
+
+    final_merged_xml_file_name="${system_name/-MRW/}.xml"
+    echo "creating final merged file $final_merged_xml_file_name"
+    $COMMON_XMLTOHB_REL_PATH/$XMLTOHB_MERGE_SCRIPT "$GENDIR/${system_name}_bmc_mrw_filtered.xml" ${GENDIR}/$XMLTOHB_ATTRIBUTES_TARGETS_MERGED_XML > \
+    ${GENDIR}/${final_merged_xml_file_name}
 
 done
 

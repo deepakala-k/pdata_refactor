@@ -1087,7 +1087,8 @@ sub validateAttributes
     $elements{"mrwRequired"}         = { required => 0, isscalar => 0 };
 
     # do NOT export attribute & its associated enum to serverwiz
-    $elements{"no_export"} = { required => 0, isscalar => 0 };
+    $elements{"no_export"}  = { required => 0, isscalar => 0 };
+    $elements{"isVolatile"} = { required => 0, isscalar => 0 };
 
     foreach my $attribute ( @{ $attributes->{attribute} } )
     {
@@ -2696,8 +2697,9 @@ sub writeAttrIdNameHFile
     print $outFile "// Attribute ID -> Attribute Name Map File\n";
 
     # includes
-    if($buildBmc) {
-     print $outFile "#include <cstdint>\n";
+    if ($buildBmc)
+    {
+        print $outFile "#include <cstdint>\n";
     }
     print $outFile "#include <map>\n\n";
 
@@ -3005,7 +3007,7 @@ sub writeTraitFileTraits
         # Build boolean traits
 
         my $traits = "";
-        foreach my $trait ( "writeable", "readable", "hasStringConversion" )
+        foreach my $trait ( "writeable", "readable", "hasStringConversion", "isVolatile" )
         {
             if ( exists $attribute->{$trait} )
             {

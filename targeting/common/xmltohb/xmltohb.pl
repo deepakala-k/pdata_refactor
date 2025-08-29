@@ -1960,7 +1960,7 @@ sub writeStructFileHeader
 
 // Targeting component
 #include <builtins.h>
-#include <targeting/common/attributes.H>
+@{[ $buildBmc ? "" : "#include <targeting/common/attributes.H>\n" ]}
 #include <targeting/common/entitypath.H>
 
 //******************************************************************************
@@ -2695,6 +2695,9 @@ sub writeAttrIdNameHFile
     print $outFile "// Attribute ID -> Attribute Name Map File\n";
 
     # includes
+    if($buildBmc) {
+     print $outFile "#include <cstdint>\n";
+    }
     print $outFile "#include <map>\n\n";
 
     print $outFile "extern const std::map<uint32_t,const char*>g_nonRwAttrIdToNameMap;\n";
@@ -2930,6 +2933,8 @@ sub writeTraitFileHeader
 #if __cplusplus >= 201103L
 #include <array>
 #endif
+
+@{[ $buildBmc ? "#include <targeting/xmltohb/attributestructs.H>" : "" ]}
 
 VERBATIM
 

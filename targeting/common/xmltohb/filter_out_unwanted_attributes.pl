@@ -41,12 +41,16 @@ my @tgt_files;
 my $mrw_file;
 my $help;
 my $verbose;
+my $attr_filter_file;
+my $target_filter_file;
 
 GetOptions(
-    "tgt-xml=s" => \@tgt_files,
-    "mrw-xml=s" => \$mrw_file,
-    "help"      => \$help,
-    "verbose|v" => \$verbose,
+    "tgt-xml=s"          => \@tgt_files,
+    "mrw-xml=s"          => \$mrw_file,
+    "filter-attr-file=s" => \$attr_filter_file,
+    "filter-tgt-file=s"  => \$target_filter_file,
+    "help"               => \$help,
+    "verbose|v"          => \$verbose,
 );
 
 if ( ( scalar @tgt_files eq 0 ) || ( $mrw_file eq "" ) )
@@ -76,7 +80,30 @@ sub usage
     print "Usage: ./filter_out_unwanted_attributes.pl --mrw-xml [mrw xml]\\\n";
     print "     --tgt-xml [common target xml] (optional --tgt-xml [platform target xml])\n";
     print "     --verbose (or -v)\n";
+    print "     --filter-attr-file [filter-file] (optional)";
+    print "     --filter-tgt-file [filter-file] (optional)";
     exit(-1);
+}
+
+sub loadAllowedFilterList
+{
+    my ( $filter_file, $allowed_list_ref, $filter_is_active_ref ) = @_;
+
+    if ($filter_file)
+    {
+        open my $fh, '<', $filter_file or die "Cannot open $filter_file: $!";
+        while ( my $line = <$fh> )
+        {
+            chomp $line;
+            next if $line =~ /^\s*#/;    # skip comment lines
+            next if $line eq '';         # skip empty lines
+            $allowed_list_ref->{$line} = 1;
+        }
+        close $fh;
+    }
+
+    # set the scalar behind the reference
+    $$filter_is_active_ref = scalar( keys %$allowed_list_ref ) > 0;
 }
 
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
@@ -87,12 +114,27 @@ open( FH, "<$tgt_files[0]" )
     || die "ERROR: unable to open $tgt_files[0]\n";
 close(FH);
 
-open( FH, "<$tgt_files[1]" )
-    || die "ERROR: unable to open $tgt_files[1]\n";
-close(FH);
-
 my $fileCommon = XMLin("$tgt_files[0]");
-my $filePlatform = XMLin( "$tgt_files[1]", ForceArray => 1 );
+
+my $filePlatform;
+
+# check if the parameter is provided(optional input)
+if ( defined $tgt_files[1] )
+{
+    open( FH, "<$tgt_files[1]" )
+        || die "ERROR: unable to open $tgt_files[1]\n";
+    close(FH);
+    $filePlatform = XMLin( "$tgt_files[1]", ForceArray => 1 );
+}
+
+# check if filter file is provided, update the list accordingly
+my %allowed_attr_list;
+my $attr_filter_is_active;
+loadAllowedFilterList( $attr_filter_file, \%allowed_attr_list, \$attr_filter_is_active );
+
+my %allowed_tgt_list;
+my $tgt_filter_is_active;
+loadAllowedFilterList( $target_filter_file, \%allowed_tgt_list, \$tgt_filter_is_active );
 
 # This loop will fetch all targetTypeExtension from platform target types xml
 # and push it in an array "@NewAttr"
@@ -247,7 +289,10 @@ foreach my $tgt ( $mrw_parsed->findnodes('/attributes/targetInstance') )
 {
     my $tgt_type = $tgt->findnodes('./type');
 
-    if ( !defined $tgt_xmls->{'targetType'}->{$tgt_type} )
+    if (!defined $tgt_xmls->{'targetType'}->{$tgt_type}
+        && ( !$tgt_filter_is_active
+            || ( $tgt_filter_is_active && !defined $allowed_tgt_list{$tgt_type} ) )
+        )
     {
         if ($verbose)
         {
@@ -292,27 +337,11 @@ foreach my $tgt ( $mrw_parsed->findnodes('/attributes/targetInstance') )
 # retval: true == attr found, false == attr not found
 sub findAttribute
 {
-    my $tgt  = shift;
-    my $attr = shift;
-    my $targetType;
+    my ( $tgt, $attr ) = @_;
 
-    if ( defined $tgt_xmls->{'targetType'}{$tgt}{attribute}{$attr} )
-    {
-        #attribute found under the passed in target in this xml
-        return 1;
-    }
-    else
-    {
-        my %tgt_hash = %$tgt_xmls;
+    return 1 if attrExistsAndAllowed( $tgt, $attr );
 
-        #if not found in this target, look under parent target
-        #some targets are inherrited
-        if ( lookAtParentAttributes( \%tgt_hash, $tgt, $attr ) eq 1 )
-        {
-            return 1;
-        }
-    }
-    return 0;
+    return lookAtParentAttributes( $tgt, $attr );
 }
 
 # sub - lookAtParentAttributes
@@ -324,35 +353,36 @@ sub findAttribute
 # retval: true == attr found, false == attr not found
 sub lookAtParentAttributes
 {
-    my ( $tgt_xmls, $tgt, $attr ) = @_;
+    my ( $tgt, $attr ) = @_;
 
-    my $parent = $tgt_xmls->{'targetType'}{$tgt}{parent};
-    if ( $parent eq "" )
-    {
-        return 0;
-    }
-    elsif ( $parent eq "base" )
-    {
-        return ( defined $tgt_xmls->{'targetType'}{$parent}{attribute}{$attr} ) ? 1 : 0;
-    }
-    else
-    {
-        if ( defined $tgt_xmls->{'targetType'}{$parent}{attribute}{$attr} )
-        {
-            return 1;
-        }
-        else
-        {
-            my %tgt_hash = %$tgt_xmls;
+    my $parent = $tgt_xmls->{'targetType'}{$tgt}{parent} // '';
 
-            #attribute not found, maybe it is inherrited from the parent
-            #recursively look for the attribute in this target's parent
-            #We will look until we find the attribute, or there is no parent
-            #(parent == "") or we have reached the "base" target
-            #"base" is the topmost target defined in target_type xml
-            return lookAtParentAttributes( \%tgt_hash, $parent, $attr );
-        }
+    return 0 if $parent eq '';    # No parent
+
+    if ( $parent eq "base" )
+    {
+        return attrExistsAndAllowed( $parent, $attr ) ? 1 : 0;
     }
+
+    return attrExistsAndAllowed( $parent, $attr )
+        || lookAtParentAttributes( $parent, $attr );
+}
+
+# sub - attrExistsAndAllowed
+#       compares if the attribute is define in the target type
+#       if the filter is present, look if the attribute is present there
+# param[in]: tgt - the target we are looking for
+# param[in]: attr - attribute to look for
+# retval: true == attr found, false == attr not found
+sub attrExistsAndAllowed
+{
+    my ( $tgt, $attr ) = @_;
+
+    return 0 unless defined $tgt_xmls->{'targetType'}{$tgt}{attribute}{$attr};
+
+    # filter file is not active, as it found the attribute return true
+    return 1 unless $attr_filter_is_active;
+    return defined $allowed_attr_list{$attr};
 }
 
 #OUTPUT

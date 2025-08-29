@@ -6165,6 +6165,27 @@ sub mergeComplexAttributeFields
     return $mergedFields;
 }
 
+sub loadAllowedFilterList
+{
+    my ( $filter_file, $allowed_list_ref, $filter_is_active_ref ) = @_;
+
+    if ($filter_file)
+    {
+        open my $fh, '<', $filter_file or die "Cannot open $filter_file: $!";
+        while ( my $line = <$fh> )
+        {
+            chomp $line;
+            next if $line =~ /^\s*#/;    # skip comment lines
+            next if $line eq '';         # skip empty lines
+            $allowed_list_ref->{$line} = 1;
+        }
+        close $fh;
+    }
+
+    # set the scalar behind the reference
+    $$filter_is_active_ref = scalar( keys %$allowed_list_ref ) > 0;
+}
+
 ################################################################################
 # Get target attributes
 ################################################################################
@@ -6204,6 +6225,11 @@ sub getTargetAttributes
 {
     my ( $type, $attributes, $attrhasha ) = @_;
 
+    my %allowed_attr_list;
+    my $user_provided_attr_filter_is_active;
+
+    loadAllowedFilterList( $filterAttrFile, \%allowed_attr_list, \$user_provided_attr_filter_is_active );
+
     foreach my $targetType ( @{ $attributes->{targetType} } )
     {
         if ( $targetType->{id} eq $type )
@@ -6217,6 +6243,12 @@ sub getTargetAttributes
             # copy them over to aggregate attributes if necessary
             foreach my $attr ( @{ $targetType->{attribute} } )
             {
+                # check if the filtering option is enabled
+                # if the filtered list does not contain, skip this attribute
+                next
+                    if $user_provided_attr_filter_is_active
+                    && !defined $allowed_attr_list{ $attr->{id} };
+
                 # Flag to indicate that a complex type has been found
                 my $isComplex = 0;
 

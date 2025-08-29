@@ -200,6 +200,7 @@ my %ocmb_device_path_method_registry = (
 
             my $oscrefclk_phys = $node_phys . "/oscrefclk-$osrefclk_instance_per_node";
             $targetObj->setAttribute($target, "PHYS_PATH", $oscrefclk_phys);
+            $targetObj->setAttribute($target, "AFFINITY_PATH", $oscrefclk_phys);
 
             # OSCREFCLK is Non-FAPI target
             $targetObj->setAttribute($target,"FAPI_NAME", "NA");

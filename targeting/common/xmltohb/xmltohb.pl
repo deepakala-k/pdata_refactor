@@ -1350,6 +1350,7 @@ sub writeFapi2PlatAttrMacrosHeaderFileHeader
 
 // STD
 #include <stdint.h>
+@{[ $buildBmc ? "#include <targeting/xmltohb/attributeenums.H>" : "" ]}
 
 //******************************************************************************
 // Macros
@@ -1601,7 +1602,7 @@ sub writeHeaderFormatHeaderFile
 //******************************************************************************
 
 // STD
-#include <builtins.h>
+@{[ $buildBmc ? "#include <targeting/xmltohb/builtins.h>" : "#include <builtins.h>\n" ]}
 #include <stdint.h>
 #include <targeting/adapters/types.H>
 #include <targeting/common/pointer.H>
@@ -1959,8 +1960,8 @@ sub writeStructFileHeader
 #include <stdlib.h>
 
 // Targeting component
-#include <builtins.h>
-#include <targeting/common/attributes.H>
+@{[ $buildBmc ? "#include <targeting/xmltohb/builtins.h>" : "#include <builtins.h>\n" ]}
+@{[ $buildBmc ? "" : "#include <targeting/common/attributes.H>\n" ]}
 #include <targeting/common/entitypath.H>
 
 //******************************************************************************
@@ -2695,6 +2696,9 @@ sub writeAttrIdNameHFile
     print $outFile "// Attribute ID -> Attribute Name Map File\n";
 
     # includes
+    if($buildBmc) {
+     print $outFile "#include <cstdint>\n";
+    }
     print $outFile "#include <map>\n\n";
 
     print $outFile "extern const std::map<uint32_t,const char*>g_nonRwAttrIdToNameMap;\n";
@@ -2930,6 +2934,8 @@ sub writeTraitFileHeader
 #if __cplusplus >= 201103L
 #include <array>
 #endif
+
+@{[ $buildBmc ? "#include <targeting/xmltohb/attributestructs.H>" : "" ]}
 
 VERBATIM
 

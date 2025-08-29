@@ -21,6 +21,29 @@
 # permissions and limitations under the License.
 #
 # IBM_PROLOG_END_TAG
-echo "<attributes>" 
-cat $* | grep -v "<attributes>" | grep -v "</attributes>" 
-echo "</attributes>" 
+
+#!/bin/bash
+# Usage: ./merge_attributes.sh file1.xml file2.xml ... > merged.xml
+
+# Exit if no files provided
+if [ $# -eq 0 ]; then
+    echo "Error: No input files given" >&2
+    exit 1
+fi
+
+echo "<attributes>"
+
+for file in "$@"; do
+    # Check if file exists and is not empty
+    if [ ! -s "$file" ]; then
+        echo "Error: File '$file' not found or empty" >&2
+        exit 1
+    fi
+
+    # Remove XML declaration, <attributes>, and </attributes> tags
+    grep -v '<?xml' "$file" | \
+    grep -v '<attributes>' | \
+    grep -v '</attributes>'
+done
+
+echo "</attributes>"

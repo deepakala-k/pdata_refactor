@@ -45,46 +45,48 @@ use Data::Dumper;
 
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
-my $hb = "";
+my $hb     = "";
 my $common = "";
-my $usage = 0;
+my $usage  = 0;
 use Getopt::Long;
-GetOptions( "hb:s"       => \$hb,
-            "common:s"   => \$common,
-            "help"       => \$usage, );
+GetOptions(
+    "hb:s"     => \$hb,
+    "common:s" => \$common,
+    "help"     => \$usage,
+);
 
-if ($usage || ($hb eq "") || ($common eq ""))
+if ( $usage || ( $hb eq "" ) || ( $common eq "" ) )
 {
     display_help();
     exit 0;
 }
 
-open (FH, "<$hb") ||
-    die "ERROR: unable to open $hb\n";
-close (FH);
+open( FH, "<$hb" )
+    || die "ERROR: unable to open $hb\n";
+close(FH);
 
-my $generic = XMLin("$hb", ForceArray=>1);
+my $generic = XMLin( "$hb", ForceArray => 1 );
 
-open (FH, "<$common") ||
-    die "ERROR: unable to open $common\n";
-close (FH);
+open( FH, "<$common" )
+    || die "ERROR: unable to open $common\n";
+close(FH);
 
 my $generic1 = XMLin("$common");
 
 my @NewAttr;
-foreach my $Extension ( @{$generic->{targetTypeExtension}} )
+foreach my $Extension ( @{ $generic->{targetTypeExtension} } )
 {
     my $id = $Extension->{id}->[0];
-    foreach my $attr ( @{$Extension->{attribute}} )
+    foreach my $attr ( @{ $Extension->{attribute} } )
     {
         my $attribute_id = $attr->{id}->[0];
-        my $default = "";
-        if (exists $attr->{default})
+        my $default      = "";
+        if ( exists $attr->{default} )
         {
             $default = $attr->{default}->[0];
         }
 
-        if (! exists $generic1->{targetType}->{$id}->{attribute}->{$attribute_id})
+        if ( !exists $generic1->{targetType}->{$id}->{attribute}->{$attribute_id} )
         {
             push @NewAttr, [ $id, $attribute_id, $default ];
         }
@@ -93,35 +95,35 @@ foreach my $Extension ( @{$generic->{targetTypeExtension}} )
 
 #for my $i ( 0 .. $#NewAttr )
 #{
-         #  print STDERR "$NewAttr[$i][0], $NewAttr[$i][1], $NewAttr[$i][2]\n";
+#  print STDERR "$NewAttr[$i][0], $NewAttr[$i][1], $NewAttr[$i][2]\n";
 #}
 
-open (FH, "<$common");
+open( FH, "<$common" );
 
 my $check = 0;
-my $id = "";
-while (my $line = <FH>)
+my $id    = "";
+while ( my $line = <FH> )
 {
-    if ( $line =~ /^\s*<targetType>.*/)
+    if ( $line =~ /^\s*<targetType>.*/ )
     {
         $check = 1;
     }
-    elsif ($check == 1 && $line =~ /^\s*<id>/)
+    elsif ( $check == 1 && $line =~ /^\s*<id>/ )
     {
         $check = 0;
-        $id = $line;
+        $id    = $line;
         $id =~ s/\n//;
         $id =~ s/.*<id>(.*)<\/id>.*/$1/;
     }
-    elsif ($line =~ /^\s*<\/targetType>.*/)
+    elsif ( $line =~ /^\s*<\/targetType>.*/ )
     {
         for my $i ( 0 .. $#NewAttr )
         {
-            if ($NewAttr[$i][0] eq $id)
+            if ( $NewAttr[$i][0] eq $id )
             {
                 print "    <attribute>\n";
                 print "        <id>$NewAttr[$i][1]</id>\n";
-                if ($NewAttr[$i][2] ne "")
+                if ( $NewAttr[$i][2] ne "" )
                 {
                     print "        <default>$NewAttr[$i][2]</default>\n";
                 }
@@ -132,7 +134,7 @@ while (my $line = <FH>)
     print "$line";
 }
 
-close (FH);
+close(FH);
 
 sub display_help
 {

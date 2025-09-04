@@ -87,7 +87,7 @@ use Targets;
 # not stored here.) Callouts for bus types listed here will end up in
 # the target's FRU_PATH attribute.
 my %TARGET_BUSSES = (
-    OMI => 1,
+    OMI  => 1,
     XBUS => 1,
 );
 
@@ -114,23 +114,16 @@ my %TARGET_BUSSES = (
 # parent with the type PARENT TARGET TYPE and set the attribute on
 # that target.
 my %ATTRIBUTE_BUSSES = (
-    I2C =>
-    {
-        'ocmb' => [ 'DEST_TARGET', 'DIMM', 'I2C_CALLOUTS' ]
-    },
-    SPI =>
-    {
+    I2C => { 'ocmb' => [ 'DEST_TARGET', 'DIMM', 'I2C_CALLOUTS' ] },
+    SPI => {
         'spi-tpm' => [ 'DEST_TARGET', 'TPM', 'FRU_PATH' ],
 
         'spi-sbepri' => [ 'SOURCE_TARGET', 'PROC', 'SPI_SBE_BOOT_CODE_PRIMARY_INFO_CALLOUTS' ],
         'spi-sbebup' => [ 'SOURCE_TARGET', 'PROC', 'SPI_SBE_BOOT_CODE_BACKUP_CALLOUTS' ],
-        'spi-mvpd' => [ 'SOURCE_TARGET', 'PROC', 'SPI_MVPD_PRIMARY_INFO_CALLOUTS' ],
-        'spi-meas' => [ 'SOURCE_TARGET', 'PROC', 'SPI_MVPD_BACKUP_INFO_CALLOUTS' ],
+        'spi-mvpd'   => [ 'SOURCE_TARGET', 'PROC', 'SPI_MVPD_PRIMARY_INFO_CALLOUTS' ],
+        'spi-meas'   => [ 'SOURCE_TARGET', 'PROC', 'SPI_MVPD_BACKUP_INFO_CALLOUTS' ],
     },
-    FSIM =>
-    {
-        'fsim' => [ 'DEST_TARGET', 'PROC', 'FRU_PATH' ]
-    }
+    FSIM => { 'fsim' => [ 'DEST_TARGET', 'PROC', 'FRU_PATH' ] }
 );
 
 # @brief Get the location code of the given target, or of the nearest parent that has one.
@@ -140,9 +133,9 @@ my %ATTRIBUTE_BUSSES = (
 # @return                - A location code, or the empty string if not found.
 sub getClosestLocationCode
 {
-    my ($targetObj, $target) = @_;
+    my ( $targetObj, $target ) = @_;
 
-    if ($target eq '')
+    if ( $target eq '' )
     {
         return '';
     }
@@ -150,7 +143,7 @@ sub getClosestLocationCode
     # Ignore errors when fetching this attribute
     my $code = eval '$targetObj->getAttribute($target, "STATIC_ABS_LOCATION_CODE")';
 
-    return $code || getClosestLocationCode($targetObj, $targetObj->getTargetParent($target));
+    return $code || getClosestLocationCode( $targetObj, $targetObj->getTargetParent($target) );
 }
 
 # @brief Translate the value of a FRU_PATH attribute (of the form
@@ -163,9 +156,9 @@ sub getClosestLocationCode
 # @return                - A string of callouts with priority and location code.
 sub getCalloutLocationCodesString
 {
-    my ($targetObj, $fruPath) = @_;
+    my ( $targetObj, $fruPath ) = @_;
 
-    my @callouts = split(',', $fruPath);
+    my @callouts = split( ',', $fruPath );
 
     my @codes;
 
@@ -174,17 +167,17 @@ sub getCalloutLocationCodesString
         # This pattern should match things like H:/path/to/target
         # Some target paths end with a parenthetical comment which we
         # want to ignore.
-        if ($callout =~ /(.):([^\(]+)/)
+        if ( $callout =~ /(.):([^\(]+)/ )
         {
-            my ($priority, $calloutpath) = ($1, $2);
+            my ( $priority, $calloutpath ) = ( $1, $2 );
 
-            my $location = getClosestLocationCode($targetObj, $calloutpath);
+            my $location = getClosestLocationCode( $targetObj, $calloutpath );
 
-            push(@codes, ("$priority:$location"));
+            push( @codes, ("$priority:$location") );
         }
     }
 
-    return join(',', reverse(@codes));
+    return join( ',', reverse(@codes) );
 }
 
 # @brief Set the intermediate bus FRU callout attributes for a bus
@@ -194,13 +187,14 @@ sub getCalloutLocationCodesString
 # @param[in] $busType    - The type of the bus connection (OMI, XBUS, etc).
 sub setupBusWithTarget
 {
-    my ($targetObj, $busType) = @_;
+    my ( $targetObj, $busType ) = @_;
 
-    foreach my $connections ($targetObj->{data}->{BUSSES}->{$busType})
+    foreach my $connections ( $targetObj->{data}->{BUSSES}->{$busType} )
     {
         foreach my $conn (@$connections)
         {
-            my $callouts = getCalloutLocationCodesString($targetObj, $conn->{BUS_TARGET}->{bus_attribute}->{FRU_PATH}->{default});
+            my $callouts = getCalloutLocationCodesString( $targetObj,
+                $conn->{BUS_TARGET}->{bus_attribute}->{FRU_PATH}->{default} );
 
             my $target = $conn->{SOURCE_TARGET};
 
@@ -209,7 +203,7 @@ sub setupBusWithTarget
             $target =~ s/xbus/abus/;
             $target =~ s/groupx/group/;
 
-            $targetObj->setAttribute($target, 'FRU_PATH', $callouts);
+            $targetObj->setAttribute( $target, 'FRU_PATH', $callouts );
         }
     }
 }
@@ -222,46 +216,48 @@ sub setupBusWithTarget
 # @param[in] $busType    - The type of the bus connection (I2C, SPI, etc).
 sub setupBusWithParentTarget
 {
-    my ($targetObj, $busType) = @_;
+    my ( $targetObj, $busType ) = @_;
 
-    foreach my $connections ($targetObj->{data}->{BUSSES}->{$busType})
+    foreach my $connections ( $targetObj->{data}->{BUSSES}->{$busType} )
     {
         foreach my $conn (@$connections)
         {
-            foreach my $pattern (keys %{$ATTRIBUTE_BUSSES{$busType}})
+            foreach my $pattern ( keys %{ $ATTRIBUTE_BUSSES{$busType} } )
             {
-                if ($conn->{BUS_TARGET}->{bus_id} =~ /$pattern/)
+                if ( $conn->{BUS_TARGET}->{bus_id} =~ /$pattern/ )
                 {
-                    my ($busPath, $targetType, $attrname) = @{$ATTRIBUTE_BUSSES{$busType}->{$pattern}};
+                    my ( $busPath, $targetType, $attrname ) = @{ $ATTRIBUTE_BUSSES{$busType}->{$pattern} };
 
-                    my $parent = $targetObj->findParentByType($conn->{$busPath}, $targetType, 0);
+                    my $parent = $targetObj->findParentByType( $conn->{$busPath}, $targetType, 0 );
 
-                    if ($parent eq '')
+                    if ( $parent eq '' )
                     {
                         # Look for the exception case of a valid OCMB target being on the planar.
                         # In this exception case the OCMB is on the planar and not on the DDIMM
                         # itself; therefore, the OCMB won't have a parent of type DIMM.
                         my $die = 1;
-                        my $conn_ocmb_target = $targetObj->findParentByType($conn->{$busPath}, "OCMB_CHIP", 0);
-                        if (($conn_ocmb_target ne '') &&
-                            ($targetType eq "DIMM") &&
-                            ($targetObj->getTargetType($conn_ocmb_target) eq "chip-ocmb-planar"))
+                        my $conn_ocmb_target = $targetObj->findParentByType( $conn->{$busPath}, "OCMB_CHIP", 0 );
+                        if (   ( $conn_ocmb_target ne '' )
+                            && ( $targetType eq "DIMM" )
+                            && ( $targetObj->getTargetType($conn_ocmb_target) eq "chip-ocmb-planar" ) )
                         {
-                            print "setupBusWithParentTarget: skipping connection to planar OCMB\n" if $targetObj->{debug};
+                            print "setupBusWithParentTarget: skipping connection to planar OCMB\n"
+                                if $targetObj->{debug};
                             $die = 0;
                         }
 
-                        if ($die == 1)
+                        if ( $die == 1 )
                         {
-                            die "setupBusWithParentTarget: $conn->{$busPath} has no parent of type " .
-                                "$targetType (bus type = $busType)\n";
+                            die "setupBusWithParentTarget: $conn->{$busPath} has no parent of type "
+                                . "$targetType (bus type = $busType)\n";
                         }
                     }
 
                     my $attributeHolderTarget = $parent;
-                    my $callouts = getCalloutLocationCodesString($targetObj, $conn->{BUS_TARGET}->{bus_attribute}->{FRU_PATH}->{default});
+                    my $callouts              = getCalloutLocationCodesString( $targetObj,
+                        $conn->{BUS_TARGET}->{bus_attribute}->{FRU_PATH}->{default} );
 
-                    $targetObj->setAttribute($attributeHolderTarget, $attrname, $callouts);
+                    $targetObj->setAttribute( $attributeHolderTarget, $attrname, $callouts );
 
                     last;
                 }
@@ -284,9 +280,9 @@ sub setupBusses
     # systems Hostboot adds callouts to intermediate FRUs for bus
     # errors, so we package the data for bus callouts into the
     # targeting data itself.
-    foreach my $target (keys %{ $targetObj->getAllTargets() })
+    foreach my $target ( keys %{ $targetObj->getAllTargets() } )
     {
-        if ($targetObj->getType($target) eq 'BMC')
+        if ( $targetObj->getType($target) eq 'BMC' )
         {
             $ebmc_system = 1;
             last;
@@ -295,15 +291,15 @@ sub setupBusses
 
     if ($ebmc_system)
     {
-        foreach my $busType (keys(%{ $targetObj->{data}->{BUSSES} }))
+        foreach my $busType ( keys( %{ $targetObj->{data}->{BUSSES} } ) )
         {
-            if ($TARGET_BUSSES{$busType})
+            if ( $TARGET_BUSSES{$busType} )
             {
-                setupBusWithTarget($targetObj, $busType);
+                setupBusWithTarget( $targetObj, $busType );
             }
-            elsif ($ATTRIBUTE_BUSSES{$busType})
+            elsif ( $ATTRIBUTE_BUSSES{$busType} )
             {
-                setupBusWithParentTarget($targetObj, $busType);
+                setupBusWithParentTarget( $targetObj, $busType );
             }
         }
     }

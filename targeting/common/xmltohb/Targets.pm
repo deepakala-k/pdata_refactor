@@ -36,7 +36,6 @@ use List::Util qw(max);
 # Define a true and false keyword
 use constant { true => 1, false => 0 };
 
-
 #--------------------------------------------------
 # @brief The constructor for the object Targets which will contain the
 #        target instances along with their attributes.
@@ -45,36 +44,37 @@ sub new
 {
     my $class = shift;
     my $self  = {
+
         # The following data are associated with the
         # user command line options
-        build           => "",
-        force           => 0,
-        serverwiz_file  => "",  # input xml file
-        serverwiz_dir   => "",  # directory of input xml file
-        debug           => 0,
-        system_config   => "",
-        output_file     => "",
-        report          => 0,
-        run_self_test   => 0,   # run internal test
-        stealth_mode    => 0,   # Silence warnings, only print errors
+        build          => "",
+        force          => 0,
+        serverwiz_file => "",    # input xml file
+        serverwiz_dir  => "",    # directory of input xml file
+        debug          => 0,
+        system_config  => "",
+        output_file    => "",
+        report         => 0,
+        run_self_test  => 0,     # run internal test
+        stealth_mode   => 0,     # Silence warnings, only print errors
 
         # The following data are associated with the
         # xml itself
-        version      => 0,
-        xml          => undef,
-        data         => undef,
-        targeting    => undef,
-        master_proc  => undef,
-        huid_idx     => undef,
-        mru_idx      => undef,
-        xml_version  => 0,
-        errorsExist  => 0,
-        TOP_LEVEL    => "",
-        report_log   => "",
-        TOP_LEVEL_HANDLE    => undef,
-        TOPOLOGY            => undef,
-        NUM_PROCS_PER_NODE  => 0,  # The number of PROCs found/processed
-        MAX_MCS             => 0,  # The number of MCSs found/processed
+        version            => 0,
+        xml                => undef,
+        data               => undef,
+        targeting          => undef,
+        master_proc        => undef,
+        huid_idx           => undef,
+        mru_idx            => undef,
+        xml_version        => 0,
+        errorsExist        => 0,
+        TOP_LEVEL          => "",
+        report_log         => "",
+        TOP_LEVEL_HANDLE   => undef,
+        TOPOLOGY           => undef,
+        NUM_PROCS_PER_NODE => 0,       # The number of PROCs found/processed
+        MAX_MCS            => 0,       # The number of MCSs found/processed
     };
     return bless $self, $class;
 }
@@ -96,7 +96,7 @@ sub setVersion
     my $version = shift;
 
     # If no version number given, then try input XML file
-    if ($version eq undef)
+    if ( $version eq undef )
     {
         # Default to 0 if no version number given
         $version = 0;
@@ -104,7 +104,7 @@ sub setVersion
         # If the input XML file has a version number, then propagate that to the
         # output file, which seems to be the most appropriate thing to do
         # considering that the output file is a product of the input file.
-        if (exists $self->{xml}->{version})
+        if ( exists $self->{xml}->{version} )
         {
             $version = $self->{xml}->{version};
         }
@@ -122,27 +122,26 @@ sub getData
 ## loads ServerWiz XML format
 sub loadXML
 {
-    my $self = shift;
+    my $self     = shift;
     my $filename = shift;
 
     $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
     print "Loading MRW XML: $filename\n";
     $self->{xml} =
-      XMLin($filename,forcearray => [ 'child_id', 'hidden_child_id', 'bus',
-                                      'property', 'field', 'attribute',
-                                      'enumerator' ]);
+        XMLin( $filename,
+        forcearray => [ 'child_id', 'hidden_child_id', 'bus', 'property', 'field', 'attribute', 'enumerator' ] );
 
-    if (defined($self->{xml}->{'enumerationTypes'}))
+    if ( defined( $self->{xml}->{'enumerationTypes'} ) )
     {
-          $self->{xml_version} = 1;
+        $self->{xml_version} = 1;
     }
 
     $self->storeEnumerations();
     $self->storeGroups();
     $self->buildHierarchy();
     $self->prune();
-    $self->{report_filename}=$filename.".rpt";
-    $self->{report_filename}=~s/\.xml//g;
+    $self->{report_filename} = $filename . ".rpt";
+    $self->{report_filename} =~ s/\.xml//g;
 }
 
 ################################################
@@ -150,34 +149,34 @@ sub loadXML
 
 sub printXML
 {
-    my $self = shift;
-    my $fh   = shift;
-    my $t    = shift;
-    my $build= shift;
+    my $self  = shift;
+    my $fh    = shift;
+    my $t     = shift;
+    my $build = shift;
 
     my $atTop = 0;
-    if ($t eq "top")
+    if ( $t eq "top" )
     {
         $atTop = 1;
         $t     = $self->{targeting}->{SYS};
         print $fh "<attributes>\n";
         print $fh "<version>" . $self->{version} . "</version>\n";
     }
-    if (ref($t) ne "ARRAY")
+    if ( ref($t) ne "ARRAY" )
     {
         return;
     }
-    for (my $p = 0; $p < scalar(@{$t}); $p++)
+    for ( my $p = 0; $p < scalar( @{$t} ); $p++ )
     {
-        if (ref($t->[$p]) ne "HASH") { next; }
+        if ( ref( $t->[$p] ) ne "HASH" ) { next; }
         my $target = $t->[$p]->{KEY};
-        $self->printTarget($fh, $target, $build);
+        $self->printTarget( $fh, $target, $build );
         my $children = $t->[$p];
-        foreach my $u (sort(keys %{$children}))
+        foreach my $u ( sort( keys %{$children} ) )
         {
-            if ($u ne "KEY")
+            if ( $u ne "KEY" )
             {
-                $self->printXML($fh, $t->[$p]->{$u}, $build);
+                $self->printXML( $fh, $t->[$p]->{$u}, $build );
             }
         }
     }
@@ -199,7 +198,7 @@ sub dumpTarget
     my $target = shift;
 
     print "target($target)\n";
-    print Dumper($self->getTarget($target));
+    print Dumper( $self->getTarget($target) );
 }
 
 sub printTarget
@@ -211,38 +210,38 @@ sub printTarget
 
     my $target_ptr = $self->getTarget($target);
 
-    if ($target eq "")
+    if ( $target eq "" )
     {
         return;
     }
 
-    my $target_TYPE = $self->getAttribute($target, "TYPE");
+    my $target_TYPE = $self->getAttribute( $target, "TYPE" );
 
     # Only allow OMI types with MCC parent
     # OMIC_PARENT only exists on an OMI target with MCC parent
-    if ($target_TYPE eq "OMI" && !defined($target_ptr->{ATTRIBUTES}->{"OMIC_PARENT"}->{default}))
+    if ( $target_TYPE eq "OMI" && !defined( $target_ptr->{ATTRIBUTES}->{"OMIC_PARENT"}->{default} ) )
     {
         return;
     }
 
     print $fh "<targetInstance>\n";
-    my $target_id = $self->getAttribute($target, "PHYS_PATH");
-    $target_id = substr($target_id, 9);
+    my $target_id = $self->getAttribute( $target, "PHYS_PATH" );
+    $target_id = substr( $target_id, 9 );
     $target_id =~ s/\///g;
     $target_id =~ s/\-//g;
 
-    if ($target_TYPE eq "OCMB_CHIP")
+    if ( $target_TYPE eq "OCMB_CHIP" )
     {
         # If target is of type OCMB_CHIP, then remove "_chip" from target ID
         $target_id =~ s/_chip//g;
     }
-    elsif ($target_TYPE eq "MEM_PORT")
+    elsif ( $target_TYPE eq "MEM_PORT" )
     {
         # If target is of type MEM_PORT, then remove "_chip" and "mem_port" from target ID
         $target_id =~ s/_chip//g;
         $target_id =~ s/mem_port/memport/g;
     }
-    elsif ($target_TYPE eq "GENERIC_I2C_DEVICE")
+    elsif ( $target_TYPE eq "GENERIC_I2C_DEVICE" )
     {
         # If target is of type GENERIC_I2C_DEVICE, then remove "_chip" and
         # "generic_i2c_device" from target ID
@@ -251,41 +250,41 @@ sub printTarget
     }
 
     print $fh "\t<id>" . $target_id . "</id>\n";
-    if($self->getTargetType($target) eq 'unit-clk-slave')
+    if ( $self->getTargetType($target) eq 'unit-clk-slave' )
     {
-        if($target_TYPE eq 'SYSREFCLKENDPT')
+        if ( $target_TYPE eq 'SYSREFCLKENDPT' )
         {
-            print $fh "\t<type>"."unit-sysclk-slave"."</type>\n";
+            print $fh "\t<type>" . "unit-sysclk-slave" . "</type>\n";
         }
-        elsif($target_TYPE eq 'PCICLKENDPT')
+        elsif ( $target_TYPE eq 'PCICLKENDPT' )
         {
-            print $fh "\t<type>"."unit-pciclk-slave"."</type>\n";
+            print $fh "\t<type>" . "unit-pciclk-slave" . "</type>\n";
         }
-        elsif($target_TYPE eq 'LPCREFCLKENDPT')
+        elsif ( $target_TYPE eq 'LPCREFCLKENDPT' )
         {
-            print $fh "\t<type>"."unit-lpcclk-slave"."</type>\n";
+            print $fh "\t<type>" . "unit-lpcclk-slave" . "</type>\n";
         }
     }
-    elsif($self->getTargetType($target) eq 'unit-clk-master')
+    elsif ( $self->getTargetType($target) eq 'unit-clk-master' )
     {
-        if($target_TYPE eq 'SYSREFCLKENDPT')
+        if ( $target_TYPE eq 'SYSREFCLKENDPT' )
         {
-            print $fh "\t<type>"."unit-sysclk-master"."</type>\n";
+            print $fh "\t<type>" . "unit-sysclk-master" . "</type>\n";
         }
-        elsif($target_TYPE eq 'PCICLKENDPT')
+        elsif ( $target_TYPE eq 'PCICLKENDPT' )
         {
-            print $fh "\t<type>"."unit-pciclk-master"."</type>\n";
+            print $fh "\t<type>" . "unit-pciclk-master" . "</type>\n";
         }
-        elsif($target_TYPE eq 'LPCREFCLKENDPT')
+        elsif ( $target_TYPE eq 'LPCREFCLKENDPT' )
         {
-            print $fh "\t<type>"."unit-lpcclk-master"."</type>\n";
+            print $fh "\t<type>" . "unit-lpcclk-master" . "</type>\n";
         }
     }
-    elsif($self->getTargetType($target) eq 'enc-node-power9')
+    elsif ( $self->getTargetType($target) eq 'enc-node-power9' )
     {
-        if($target_TYPE eq 'CONTROL_NODE')
+        if ( $target_TYPE eq 'CONTROL_NODE' )
         {
-            print $fh "\t<type>"."enc-controlnode-power9"."</type>\n";
+            print $fh "\t<type>" . "enc-controlnode-power9" . "</type>\n";
         }
         else
         {
@@ -298,9 +297,9 @@ sub printTarget
     }
 
     ## get attributes
-    foreach my $attr (sort (keys %{ $target_ptr->{ATTRIBUTES} }))
+    foreach my $attr ( sort ( keys %{ $target_ptr->{ATTRIBUTES} } ) )
     {
-        $self->printAttribute($fh, $target_ptr->{ATTRIBUTES}, $attr, $build);
+        $self->printAttribute( $fh, $target_ptr->{ATTRIBUTES}, $attr, $build );
     }
     print $fh "</targetInstance>\n";
 }
@@ -316,10 +315,10 @@ sub printAttribute
 
     # Read the value right away so we can decide if it is even valid
     my $value = $target_ptr->{$attribute}->{default};
-    if ($value eq "")
+    if ( $value eq "" )
     {
         # Only spew warning if not in stealth mode
-        if (0 == $self->{stealth_mode})
+        if ( 0 == $self->{stealth_mode} )
         {
             print " Targets.pm> WARNING: empty default tag for attribute : $attribute\n";
         }
@@ -329,13 +328,13 @@ sub printAttribute
     # TODO RTC: TBD
     # temporary until we converge attribute types
     my %filter;
-    $filter{MODEL}                                                  = 1;
-    $filter{NUMERIC_POD_TYPE_TEST}                                  = 1;
-    if ($filter{$attribute} == 1)
+    $filter{MODEL}                 = 1;
+    $filter{NUMERIC_POD_TYPE_TEST} = 1;
+    if ( $filter{$attribute} == 1 )
     {
         return;
     }
-    if ( $build eq "fsp" && ($attribute eq "INSTANCE_PATH" || $attribute eq "PEER_HUID"))
+    if ( $build eq "fsp" && ( $attribute eq "INSTANCE_PATH" || $attribute eq "PEER_HUID" ) )
     {
         print $fh "\t<compileAttribute>\n";
     }
@@ -345,12 +344,12 @@ sub printAttribute
     }
     print $fh "\t\t<id>$attribute</id>\n";
 
-    if (ref($value) eq "HASH")
+    if ( ref($value) eq "HASH" )
     {
-        if (defined($value->{field}))
+        if ( defined( $value->{field} ) )
         {
             print $fh "\t\t<default>\n";
-            foreach my $f (sort keys %{ $value->{field} })
+            foreach my $f ( sort keys %{ $value->{field} } )
             {
                 my $v = $value->{field}->{$f}->{value};
                 print $fh "\t\t\t<field><id>$f</id><value>$v</value></field>\n";
@@ -363,7 +362,7 @@ sub printAttribute
         print $fh "\t\t<default>$value</default>\n";
     }
 
-    if ( $build eq "fsp" && ($attribute eq "INSTANCE_PATH" || $attribute eq "PEER_HUID"))
+    if ( $build eq "fsp" && ( $attribute eq "INSTANCE_PATH" || $attribute eq "PEER_HUID" ) )
     {
         print $fh "\t</compileAttribute>\n";
     }
@@ -397,19 +396,18 @@ sub printAttribute
 #--------------------------------------------------
 sub storeEnumerations
 {
-    my $self = shift;
+    my $self    = shift;
     my $baseptr = $self->{xml}->{enumerationType};
-    if ($self->{xml_version} == 1)
+    if ( $self->{xml_version} == 1 )
     {
         $baseptr = $self->{xml}->{enumerationTypes}->{enumerationType};
     }
-    foreach my $enumType (keys(%{ $baseptr }))
+    foreach my $enumType ( keys( %{$baseptr} ) )
     {
-        foreach my $enum (
-            keys(%{$baseptr->{$enumType}->{enumerator}}))
+        foreach my $enum ( keys( %{ $baseptr->{$enumType}->{enumerator} } ) )
         {
             $self->{enumeration}->{$enumType}->{$enum} =
-              $baseptr->{$enumType}->{enumerator}->{$enum}->{value};
+                $baseptr->{$enumType}->{enumerator}->{$enum}->{value};
         }
     }
 }
@@ -417,11 +415,9 @@ sub storeEnumerations
 sub storeGroups
 {
     my $self = shift;
-    foreach my $grp (keys(%{ $self->{xml}->{attributeGroups}
-        ->{attributeGroup} }))
+    foreach my $grp ( keys( %{ $self->{xml}->{attributeGroups}->{attributeGroup} } ) )
     {
-        foreach my $attr (@{$self->{xml}->{attributeGroups}
-            ->{attributeGroup}->{$grp}->{'attribute'}})
+        foreach my $attr ( @{ $self->{xml}->{attributeGroups}->{attributeGroup}->{$grp}->{'attribute'} } )
         {
             $self->{groups}->{$grp}->{$attr} = 1;
         }
@@ -438,7 +434,7 @@ sub storeGroups
 #--------------------------------------------------
 sub __setTargetInstanceHandle__
 {
-    my $self = shift;
+    my $self       = shift;
     my $targetHndl = shift;
 
     # Dynamically create and cache a handle to the target instance
@@ -462,26 +458,25 @@ sub __initializeTargetInstanceHandle__
 {
     my $self = shift;
 
-    if ( (!defined $self->{TARGET_INST_HANDLE}) ||
-         ($self->{TARGET_INST_HANDLE} eq "") )
+    if (   ( !defined $self->{TARGET_INST_HANDLE} )
+        || ( $self->{TARGET_INST_HANDLE} eq "" ) )
     {
         # Find the location of where target instances reside
         my $targetInstances = $self->{xml}->{'targetInstance'};
-        if (!defined $targetInstances)
+        if ( !defined $targetInstances )
         {
             # Check one more level for the target instances
-            $targetInstances = $self->{xml}->{'targetInstances'}
-                                           ->{'targetInstance'};
+            $targetInstances = $self->{xml}->{'targetInstances'}->{'targetInstance'};
         }
 
         # If can't find the target instances, then state so and exit
-        if (!defined $targetInstances)
+        if ( !defined $targetInstances )
         {
             die "No target instances defined. Check input XML for 'targetInstance' tag.\n";
         }
 
         $self->__setTargetInstanceHandle__($targetInstances);
-    } # end if ( (!defined $self->{TARGET_INST_HANDLE}) ||  ...
+    }    # end if ( (!defined $self->{TARGET_INST_HANDLE}) ||  ...
 }
 
 #--------------------------------------------------
@@ -503,7 +498,7 @@ sub getTargetInstanceHandle
     # either way, no need to check handle prior to calling.
     $self->__initializeTargetInstanceHandle__();
 
-    return ($self->{TARGET_INST_HANDLE});
+    return ( $self->{TARGET_INST_HANDLE} );
 }
 
 #--------------------------------------------------
@@ -516,7 +511,7 @@ sub getTargetInstanceHandle
 #--------------------------------------------------
 sub __setTopLevel__
 {
-    my $self = shift;
+    my $self   = shift;
     my $target = shift;
 
     $self->{TOP_LEVEL} = $target;
@@ -541,32 +536,32 @@ sub __initalizeTopLevel__
 
     # If the top level target instance has not been found and set,
     # then find that target and set top level to it
-    if ((!defined $self->{TOP_LEVEL}) || ($self->{TOP_LEVEL} eq ""))
+    if ( ( !defined $self->{TOP_LEVEL} ) || ( $self->{TOP_LEVEL} eq "" ) )
     {
         # Get a handle to the target instances
         my $targetInstancesHandle = $self->getTargetInstanceHandle();
 
         # Find the system target which is the top level target
-        foreach my $target (keys(%{$targetInstancesHandle}))
+        foreach my $target ( keys( %{$targetInstancesHandle} ) )
         {
             # If target is of type 'SYS' then we found the top level target
-            if ($targetInstancesHandle->{$target}->{attribute}
-                                      ->{TYPE}->{default} eq "SYS")
+            if ( $targetInstancesHandle->{$target}->{attribute}->{TYPE}->{default} eq "SYS" )
             {
                 # Set the top level target and search no more
                 $self->__setTopLevel__($target);
 
                 last;
+
                 # YOU SHALL NOT PASS!!!
             }
         }
 
         # If unable to find top level target, then state so and exit
-        if ((!defined $self->{TOP_LEVEL}) || ($self->{TOP_LEVEL} eq ""))
+        if ( ( !defined $self->{TOP_LEVEL} ) || ( $self->{TOP_LEVEL} eq "" ) )
         {
             die "Unable to find system top level target\n";
         }
-    } # end if ((!defined $self->{TOP_LEVEL}) || ($self->{TOP_LEVEL} eq ""))
+    }    # end if ((!defined $self->{TOP_LEVEL}) || ($self->{TOP_LEVEL} eq ""))
 }
 
 #--------------------------------------------------
@@ -589,7 +584,7 @@ sub getTopLevel
     # initialize, either way, no need to check top level prior to calling.
     $self->__initalizeTopLevel__();
 
-    return ($self->{TOP_LEVEL});
+    return ( $self->{TOP_LEVEL} );
 }
 
 ####################################################
@@ -630,13 +625,13 @@ sub buildHierarchy
     my $targetInstanceHandle = $self->getTargetInstanceHandle();
 
     # If caller did not provide a target, then use the top level target
-    if ($target eq "")
+    if ( $target eq "" )
     {
         $target = $self->getTopLevel();
     }
 
     my $instance_path = $self->{data}->{INSTANCE_PATH};
-    if (!defined $instance_path)
+    if ( !defined $instance_path )
     {
         $instance_path = "";
     }
@@ -646,140 +641,116 @@ sub buildHierarchy
     my $affinity_target = $target;
     my $key             = $instance_path . "/" . $target;
 
-    if ($instance_path ne "")
+    if ( $instance_path ne "" )
     {
-        $instance_path = "instance:" . substr($instance_path, 1);
+        $instance_path = "instance:" . substr( $instance_path, 1 );
     }
     else
     {
         $instance_path = "instance:";
     }
-    $self->setAttribute($key, "INSTANCE_PATH", $instance_path);
+    $self->setAttribute( $key, "INSTANCE_PATH", $instance_path );
     $self->{data}->{TARGETS}->{$key}->{TARGET} = $target_xml;
     $self->{data}->{INSTANCE_PATH} = $old_path . "/" . $target;
 
     ## copy attributes
-    foreach my $attribute (keys %{ $target_xml->{attribute} })
+    foreach my $attribute ( keys %{ $target_xml->{attribute} } )
     {
         my $value = $target_xml->{attribute}->{$attribute}->{default};
-        if (ref($value) eq "HASH")
+        if ( ref($value) eq "HASH" )
         {
-            if (defined($value->{field}))
+            if ( defined( $value->{field} ) )
             {
-                foreach my $f (keys %{ $value->{field} })
+                foreach my $f ( keys %{ $value->{field} } )
                 {
-                    my $field_val=$value->{field}{$f}{value};
-                    if (ref($field_val)) {
-                        $self->setAttributeField($key, $attribute, $f,"");
+                    my $field_val = $value->{field}{$f}{value};
+                    if ( ref($field_val) )
+                    {
+                        $self->setAttributeField( $key, $attribute, $f, "" );
                     }
                     else
                     {
-                        $self->setAttributeField($key, $attribute, $f,
-                            $value->{field}{$f}{value});
+                        $self->setAttributeField( $key, $attribute, $f, $value->{field}{$f}{value} );
                     }
                 }
             }
             else
             {
-                if ($attribute eq "FSI_MASTER_CHIP" || $attribute eq "ALTFSI_MASTER_CHIP" )
+                if ( $attribute eq "FSI_MASTER_CHIP" || $attribute eq "ALTFSI_MASTER_CHIP" )
                 {
-                    $self->setAttribute($key, $attribute, "physical:sys-0");
+                    $self->setAttribute( $key, $attribute, "physical:sys-0" );
                 }
                 else
                 {
-                    $self->setAttribute($key, $attribute, "");
+                    $self->setAttribute( $key, $attribute, "" );
                 }
             }
         }
         else
         {
-            $self->setAttribute($key, $attribute, $value);
+            $self->setAttribute( $key, $attribute, $value );
         }
-    } # end foreach my $attribute (keys %{ $target_xml->{attribute} })
+    }    # end foreach my $attribute (keys %{ $target_xml->{attribute} })
 
     ## global attributes overwrite local
     my $settingptr = $self->{xml}->{globalSetting};
-    if ($self->{xml_version} == 1)
+    if ( $self->{xml_version} == 1 )
     {
         $settingptr = $self->{xml}->{globalSettings}->{globalSetting};
     }
 
-    foreach my $prop (keys %{$settingptr->{$key}->{property}})
+    foreach my $prop ( keys %{ $settingptr->{$key}->{property} } )
     {
-        my $val=$settingptr->{$key}->{property}->
-                       {$prop}->{value};
-        if ((ref ($val) ne "HASH") and ($val ne ""))
+        my $val = $settingptr->{$key}->{property}->{$prop}->{value};
+        if ( ( ref($val) ne "HASH" ) and ( $val ne "" ) )
         {
-            $self->setAttribute($key, $prop, $val);
+            $self->setAttribute( $key, $prop, $val );
         }
     }
 
     ## Save busses
-    if (defined($target_xml->{bus}))
+    if ( defined( $target_xml->{bus} ) )
     {
-        foreach my $b (@{ $target_xml->{bus} })
+        foreach my $b ( @{ $target_xml->{bus} } )
         {
-            if (ref($b->{dest_path}) eq "HASH") {
-                $b->{dest_path}="";
+            if ( ref( $b->{dest_path} ) eq "HASH" )
+            {
+                $b->{dest_path} = "";
             }
-            if (ref($b->{source_path}) eq "HASH") {
-                $b->{source_path}="";
+            if ( ref( $b->{source_path} ) eq "HASH" )
+            {
+                $b->{source_path} = "";
             }
-            my $source_target =
-              $key . "/" . $b->{source_path} . $b->{source_target};
+            my $source_target = $key . "/" . $b->{source_path} . $b->{source_target};
 
             my $dest_target = $key . "/" . $b->{dest_path} . $b->{dest_target};
             my $bus_type    = $b->{bus_type};
 
-            push(
-                @{
-                    $self->{data}->{TARGETS}->{$source_target}->{CONNECTION}
-                      ->{DEST}
-                  },
-                $dest_target
-            );
-            push(
-                @{
-                    $self->{data}->{TARGETS}->{$dest_target}->{CONNECTION}
-                      ->{SOURCE}
-                  },
-                $source_target
-            );
-            push(
-                @{
-                    $self->{data}->{TARGETS}->{$source_target}->{CONNECTION}
-                      ->{BUS}
-                  },
-                $b
-            );
-            push(
-                @{
-                    $self->{data}->{TARGETS}->{$source_target}->{CONNECTION}
-                      ->{BUS_PARENT}
-                  },
-                $key
-            );
+            push( @{ $self->{data}->{TARGETS}->{$source_target}->{CONNECTION}->{DEST} },       $dest_target );
+            push( @{ $self->{data}->{TARGETS}->{$dest_target}->{CONNECTION}->{SOURCE} },       $source_target );
+            push( @{ $self->{data}->{TARGETS}->{$source_target}->{CONNECTION}->{BUS} },        $b );
+            push( @{ $self->{data}->{TARGETS}->{$source_target}->{CONNECTION}->{BUS_PARENT} }, $key );
             my %bus_entry;
             $bus_entry{SOURCE_TARGET} = $source_target;
             $bus_entry{DEST_TARGET}   = $dest_target;
             $bus_entry{BUS_TARGET}    = $b;
-            push(@{ $self->{data}->{BUSSES}->{$bus_type} }, \%bus_entry);
+            push( @{ $self->{data}->{BUSSES}->{$bus_type} }, \%bus_entry );
         }
-    } # end if (defined($target_xml->{bus}))
+    }    # end if (defined($target_xml->{bus}))
 
-    foreach my $child (@{ $target_xml->{child_id} })
+    foreach my $child ( @{ $target_xml->{child_id} } )
     {
         my $child_key = $self->{data}->{INSTANCE_PATH} . "/" . $child;
         $self->{data}->{TARGETS}->{$child_key}->{PARENT} = $key;
-        push(@{ $self->{data}->{TARGETS}->{$key}->{CHILDREN} }, $child_key);
+        push( @{ $self->{data}->{TARGETS}->{$key}->{CHILDREN} }, $child_key );
         $self->buildHierarchy($child);
     }
 
-    foreach my $child (@{ $target_xml->{hidden_child_id} })
+    foreach my $child ( @{ $target_xml->{hidden_child_id} } )
     {
         my $child_key = $self->{data}->{INSTANCE_PATH} . "/" . $child;
         $self->{data}->{TARGETS}->{$child_key}->{PARENT} = $key;
-        push(@{ $self->{data}->{TARGETS}->{$key}->{CHILDREN} }, $child_key);
+        push( @{ $self->{data}->{TARGETS}->{$key}->{CHILDREN} }, $child_key );
         $self->buildHierarchy($child);
     }
     $self->{data}->{INSTANCE_PATH} = $old_path;
@@ -797,15 +768,14 @@ sub prune
     # APSS location in witherspoon XML. Need to take a call on either making
     # this an error or get rid of this function altogether when we have fixed
     # the witherspoon XML.
-    foreach my $target (sort keys %{ $self->{data}->{TARGETS} })
+    foreach my $target ( sort keys %{ $self->{data}->{TARGETS} } )
     {
-        if(not defined $self->{data}->{TARGETS}->{$target}->{TARGET})
+        if ( not defined $self->{data}->{TARGETS}->{$target}->{TARGET} )
         {
             # Only spew warning if not in stealth mode
-            if (0 == $self->{stealth_mode})
+            if ( 0 == $self->{stealth_mode} )
             {
-                printf("WARNING: Target instance for %s not found, deleting. ",
-                       $target);
+                printf( "WARNING: Target instance for %s not found, deleting. ", $target );
                 printf("This probably indicates a bug in the source XML\n");
             }
             delete $self->{data}->{TARGETS}->{$target};
@@ -818,23 +788,24 @@ sub prune
 ##
 sub getParentNodePos
 {
-    my $self = shift;
+    my $self   = shift;
     my $target = shift;
     my $pos    = 0;
 
     my $parent = $target;
-    while($self->getType($parent) ne "NODE")
+    while ( $self->getType($parent) ne "NODE" )
     {
-       $parent = $self->getTargetParent($parent);
+        $parent = $self->getTargetParent($parent);
     }
-    if($parent ne "")
+    if ( $parent ne "" )
     {
-      $pos = $self->{data}->{TARGETS}{$parent}{TARGET}{position};
-      #Reducing one to account for control node
-      if($pos > 0)
-      {
-        $pos = $pos - 1;
-      }
+        $pos = $self->{data}->{TARGETS}{$parent}{TARGET}{position};
+
+        #Reducing one to account for control node
+        if ( $pos > 0 )
+        {
+            $pos = $pos - 1;
+        }
     }
     return $pos;
 }
@@ -856,22 +827,21 @@ sub getTargetPosition
     return $self->{data}->{TARGETS}{$target}{TARGET}{position};
 }
 
-
 #--------------------------------------------------
 # @brief Maps a target type to the fapi target string
 #--------------------------------------------------
-my %FAPI_TYPE_STRINGS =
-(
+my %FAPI_TYPE_STRINGS = (
+
     # chips
-    PROC        => "pu",
-    OCMB_CHIP   => "ocmb",
-    GENERIC_I2C_DEVICE    => "generici2cslave",
-    MDS_CTLR    => "mds",
+    PROC               => "pu",
+    OCMB_CHIP          => "ocmb",
+    GENERIC_I2C_DEVICE => "generici2cslave",
+    MDS_CTLR           => "mds",
 
     # units
-    MEM_PORT    => "mp",
-    SMPGROUP    => "iolink",
-    PERV_ODY    => "perv",
+    MEM_PORT => "mp",
+    SMPGROUP => "iolink",
+    PERV_ODY => "perv",
 );
 
 #--------------------------------------------------
@@ -888,20 +858,20 @@ my %FAPI_TYPE_STRINGS =
 #--------------------------------------------------
 sub getFapiName
 {
-    my $self        = shift;
-    my $targetType  = shift;
-    my $node        = shift;
-    my $chipPos     = shift; # chip position relative to node
-    my $chipletPos  = shift; # unit position relative to chip
-    my $parentType  = shift;
+    my $self       = shift;
+    my $targetType = shift;
+    my $node       = shift;
+    my $chipPos    = shift;    # chip position relative to node
+    my $chipletPos = shift;    # unit position relative to chip
+    my $parentType = shift;
 
-    if ($targetType eq "")
+    if ( $targetType eq "" )
     {
         die "getFapiName: ERROR: Please specify a target name\n";
     }
 
     # Handle legacy code until it adds new parm
-    if( $parentType eq undef )
+    if ( $parentType eq undef )
     {
         $parentType = "PROC";
     }
@@ -910,7 +880,7 @@ sub getFapiName
 
     #This is a static variable. Persists over time
     state %nonFapiTargets;
-    if (not %nonFapiTargets)
+    if ( not %nonFapiTargets )
     {
         $nonFapiTargets{"NODE"}  = "NA";
         $nonFapiTargets{"TPM"}   = "NA";
@@ -919,40 +889,46 @@ sub getFapiName
         $nonFapiTargets{"BMC"}   = "NA";
     }
 
-    if ($nonFapiTargets{$targetType} eq "NA")
+    if ( $nonFapiTargets{$targetType} eq "NA" )
     {
         return $nonFapiTargets{$targetType};
     }
-    elsif ($targetType eq "SYS")
+    elsif ( $targetType eq "SYS" )
     {
         return "k0";
     }
+
     # First-level "chip" targets with their own chiptype
-    elsif ($targetType eq "PROC"   || $targetType eq "DIMM" ||
-           $targetType eq "MEMBUF" || $targetType eq "PMIC" ||
-           $targetType eq "OCMB_CHIP" || $targetType eq "GENERIC_I2C_DEVICE" ||
-           $targetType eq "MDS_CTLR"  || $targetType eq "POWER_IC" ||
-           $targetType eq "TEMP_SENSOR")
+    elsif ($targetType eq "PROC"
+        || $targetType eq "DIMM"
+        || $targetType eq "MEMBUF"
+        || $targetType eq "PMIC"
+        || $targetType eq "OCMB_CHIP"
+        || $targetType eq "GENERIC_I2C_DEVICE"
+        || $targetType eq "MDS_CTLR"
+        || $targetType eq "POWER_IC"
+        || $targetType eq "TEMP_SENSOR" )
     {
-        if ($node eq "" || $chipPos eq "")
+        if ( $node eq "" || $chipPos eq "" )
         {
             confess "getFapiName: ERROR: Must specify node and chipPos for $targetType
                  current node: $node, chipPos: $chipPos\n";
         }
 
-        my $chipName = $targetType; # default to target type
-        if( exists $FAPI_TYPE_STRINGS{$targetType} )
+        my $chipName = $targetType;    # default to target type
+        if ( exists $FAPI_TYPE_STRINGS{$targetType} )
         {
             $chipName = $FAPI_TYPE_STRINGS{$targetType};
         }
 
         $chipName = lc $chipName;
-        $fapiName = sprintf("%s:k0:n%d:s0:p%02d", $chipName, $node, $chipPos);
+        $fapiName = sprintf( "%s:k0:n%d:s0:p%02d", $chipName, $node, $chipPos );
     }
+
     # Unit-level "sub" targets
     else
     {
-        if ($node eq "" || $chipPos eq "" || $chipletPos eq "")
+        if ( $node eq "" || $chipPos eq "" || $chipletPos eq "" )
         {
             confess "getFapiName: ERROR: Must specify node, chipPos,
                  chipletPos for $targetType. Current node: $node, chipPos: $chipPos
@@ -961,7 +937,7 @@ sub getFapiName
 
         # chip portion comes from parent
         my $chipName = $parentType;
-        if( exists $FAPI_TYPE_STRINGS{$parentType} )
+        if ( exists $FAPI_TYPE_STRINGS{$parentType} )
         {
             $chipName = $FAPI_TYPE_STRINGS{$parentType};
         }
@@ -969,14 +945,13 @@ sub getFapiName
 
         # unit portion comes from myself
         my $unitName = $targetType;
-        if( exists $FAPI_TYPE_STRINGS{$targetType} )
+        if ( exists $FAPI_TYPE_STRINGS{$targetType} )
         {
             $unitName = $FAPI_TYPE_STRINGS{$targetType};
         }
         $unitName = lc $unitName;
 
-        $fapiName = sprintf("%s.%s:k0:n%d:s0:p%02d:c%d",
-                            $chipName, $unitName, $node, $chipPos, $chipletPos);
+        $fapiName = sprintf( "%s.%s:k0:n%d:s0:p%02d:c%d", $chipName, $unitName, $node, $chipPos, $chipletPos );
     }
 
     return $fapiName;
@@ -984,59 +959,58 @@ sub getFapiName
 
 sub setFsiAttributes
 {
-    my $self = shift;
-    my $target = shift;
-    my $type = shift;
-    my $cmfsi = shift;
-    my $phys_path = shift;
-    my $fsi_port = shift;
-    my $flip_port = shift;
+    my $self         = shift;
+    my $target       = shift;
+    my $type         = shift;
+    my $cmfsi        = shift;
+    my $phys_path    = shift;
+    my $fsi_port     = shift;
+    my $flip_port    = shift;
     my $altfsiswitch = shift;
 
-    $self->setAttribute($target, "FSI_MASTER_TYPE","NO_MASTER");
-    if ($type eq "FSIM")
+    $self->setAttribute( $target, "FSI_MASTER_TYPE", "NO_MASTER" );
+    if ( $type eq "FSIM" )
     {
-        $self->setAttribute($target, "FSI_MASTER_TYPE","MFSI");
+        $self->setAttribute( $target, "FSI_MASTER_TYPE", "MFSI" );
     }
-    if ($type eq "FSICM")
+    if ( $type eq "FSICM" )
     {
-        $self->setAttribute($target, "FSI_MASTER_TYPE","CMFSI");
+        $self->setAttribute( $target, "FSI_MASTER_TYPE", "CMFSI" );
     }
-    if ($self->isBadAttribute($target, "FSI_MASTER_CHIP"))
+    if ( $self->isBadAttribute( $target, "FSI_MASTER_CHIP" ) )
     {
-      $self->setAttribute($target, "FSI_MASTER_CHIP","physical:sys-0");
-      $self->setAttribute($target, "FSI_MASTER_PORT","0xFF");
+        $self->setAttribute( $target, "FSI_MASTER_CHIP", "physical:sys-0" );
+        $self->setAttribute( $target, "FSI_MASTER_PORT", "0xFF" );
     }
-    if ($self->isBadAttribute($target,"ALTFSI_MASTER_CHIP"))
+    if ( $self->isBadAttribute( $target, "ALTFSI_MASTER_CHIP" ) )
     {
-      $self->setAttribute($target, "ALTFSI_MASTER_CHIP","physical:sys-0");
-      $self->setAttribute($target, "ALTFSI_MASTER_PORT","0xFF");
+        $self->setAttribute( $target, "ALTFSI_MASTER_CHIP", "physical:sys-0" );
+        $self->setAttribute( $target, "ALTFSI_MASTER_PORT", "0xFF" );
     }
-    $self->setAttribute($target, "FSI_SLAVE_CASCADE", "0");
-    if ($type eq "FSICM")
+    $self->setAttribute( $target, "FSI_SLAVE_CASCADE", "0" );
+    if ( $type eq "FSICM" )
     {
-        $self->setAttribute($target, "FSI_MASTER_CHIP",$phys_path);
-        $self->setAttribute($target, "FSI_MASTER_PORT", $fsi_port);
-        $self->setAttribute($target, "ALTFSI_MASTER_CHIP",$phys_path);
-        $self->setAttribute($target, "ALTFSI_MASTER_PORT", $fsi_port);
+        $self->setAttribute( $target, "FSI_MASTER_CHIP",    $phys_path );
+        $self->setAttribute( $target, "FSI_MASTER_PORT",    $fsi_port );
+        $self->setAttribute( $target, "ALTFSI_MASTER_CHIP", $phys_path );
+        $self->setAttribute( $target, "ALTFSI_MASTER_PORT", $fsi_port );
     }
     else
     {
-      if ($altfsiswitch eq 0 )
-      {
-        $self->setAttribute($target, "FSI_MASTER_CHIP",$phys_path);
-        $self->setAttribute($target, "FSI_MASTER_PORT", $fsi_port);
-      }
-      else
-      {
-        $self->setAttribute($target, "ALTFSI_MASTER_CHIP",$phys_path);
-        $self->setAttribute($target, "ALTFSI_MASTER_PORT", $fsi_port);
-      }
+        if ( $altfsiswitch eq 0 )
+        {
+            $self->setAttribute( $target, "FSI_MASTER_CHIP", $phys_path );
+            $self->setAttribute( $target, "FSI_MASTER_PORT", $fsi_port );
+        }
+        else
+        {
+            $self->setAttribute( $target, "ALTFSI_MASTER_CHIP", $phys_path );
+            $self->setAttribute( $target, "ALTFSI_MASTER_PORT", $fsi_port );
+        }
     }
 
-    $self->setAttributeField($target, "FSI_OPTION_FLAGS","flipPort",
-          $flip_port);
-    $self->setAttributeField($target, "FSI_OPTION_FLAGS","reserved", "0");
+    $self->setAttributeField( $target, "FSI_OPTION_FLAGS", "flipPort", $flip_port );
+    $self->setAttributeField( $target, "FSI_OPTION_FLAGS", "reserved", "0" );
 
 }
 
@@ -1073,7 +1047,6 @@ sub getTargetParent
     return $target_ptr->{PARENT};
 }
 
-
 #--------------------------------------------------
 # @brief Traverse parent lineage looking for parent with
 #        given type search criteria
@@ -1099,24 +1072,24 @@ sub getTargetParent
 #--------------------------------------------------
 sub findParentByType
 {
-    my $self        = shift;
-    my $child       = shift;
-    my $typeToMatch = shift;
+    my $self               = shift;
+    my $child              = shift;
+    my $typeToMatch        = shift;
     my $errorOutIfNotFound = shift;
 
-    if ($errorOutIfNotFound eq undef)
+    if ( $errorOutIfNotFound eq undef )
     {
         $errorOutIfNotFound = true;
     }
 
     # Make sure we have not reached the end
     my $topLevel = "/" . $self->getTopLevel();
-    if ($child eq $topLevel)
+    if ( $child eq $topLevel )
     {
-        if ($errorOutIfNotFound == true)
+        if ( $errorOutIfNotFound == true )
         {
-           confess "findParentByType: ERROR: Reached top level target. " .
-                   "There is no parent of type \"$typeToMatch\". Error";
+            confess "findParentByType: ERROR: Reached top level target. "
+                . "There is no parent of type \"$typeToMatch\". Error";
         }
         else
         {
@@ -1125,13 +1098,12 @@ sub findParentByType
     }
 
     # Get the child's parent and check if that is the parent we want
-    my $parent = ($self->getTarget($child))->{PARENT};
+    my $parent     = ( $self->getTarget($child) )->{PARENT};
     my $parentType = $self->getType($parent);
 
-    if ($parentType ne $typeToMatch)
+    if ( $parentType ne $typeToMatch )
     {
-        $parent = $self->findParentByType($parent, $typeToMatch,
-                                          $errorOutIfNotFound);
+        $parent = $self->findParentByType( $parent, $typeToMatch, $errorOutIfNotFound );
     }
 
     # Found our parent, now return it. Recursion, a wonderful thing
@@ -1144,11 +1116,11 @@ sub getNumConnections
     my $self       = shift;
     my $target     = shift;
     my $target_ptr = $self->getTarget($target);
-    if (!defined($target_ptr->{CONNECTION}->{DEST}))
+    if ( !defined( $target_ptr->{CONNECTION}->{DEST} ) )
     {
         return 0;
     }
-    return scalar(@{ $target_ptr->{CONNECTION}->{DEST} });
+    return scalar( @{ $target_ptr->{CONNECTION}->{DEST} } );
 }
 
 ## returns the number of connections associated with target where the target is
@@ -1158,11 +1130,11 @@ sub getNumDestConnections
     my $self       = shift;
     my $target     = shift;
     my $target_ptr = $self->getTarget($target);
-    if (!defined($target_ptr->{CONNECTION}->{SOURCE}))
+    if ( !defined( $target_ptr->{CONNECTION}->{SOURCE} ) )
     {
         return 0;
     }
-    return scalar(@{ $target_ptr->{CONNECTION}->{SOURCE} });
+    return scalar( @{ $target_ptr->{CONNECTION}->{SOURCE} } );
 }
 
 ## returns destination target name of first connection
@@ -1229,21 +1201,21 @@ sub findFirstEndpoint
     my $end_type = shift;
 
     my $target_children = $self->getTargetChildren($target);
-    if ($target_children eq "") { return ""; }
+    if ( $target_children eq "" ) { return ""; }
 
-    foreach my $child (@{ $self->getTargetChildren($target) })
+    foreach my $child ( @{ $self->getTargetChildren($target) } )
     {
         my $child_bus_type = $self->getBusType($child);
-        if ($child_bus_type eq $bus_type)
+        if ( $child_bus_type eq $bus_type )
         {
-            for (my $i = 0; $i < $self->getNumConnections($child); $i++)
+            for ( my $i = 0; $i < $self->getNumConnections($child); $i++ )
             {
-                my $dest_target = $self->getConnectionDestination($child, $i);
+                my $dest_target = $self->getConnectionDestination( $child, $i );
                 my $dest_parent = $self->getTargetParent($dest_target);
                 my $type        = $self->getMrwType($dest_parent);
                 my $dest_type   = $self->getType($dest_parent);
-                if ($type eq "NA") { $type = $dest_type; }
-                if ($type eq $end_type)
+                if ( $type eq "NA" ) { $type = $dest_type; }
+                if ( $type eq $end_type )
                 {
                     return $dest_parent;
                 }
@@ -1261,20 +1233,18 @@ sub findConnections
     my $bus_type = shift;
     my $end_type = shift;
 
-    return $self->findConnectionsByDirection($target, $bus_type,
-                                             $end_type, 0);
+    return $self->findConnectionsByDirection( $target, $bus_type, $end_type, 0 );
 }
 
 # Find connections _to_ $target (and it's children)
 sub findDestConnections
 {
-    my $self     = shift;
-    my $target   = shift;
-    my $bus_type = shift;
+    my $self        = shift;
+    my $target      = shift;
+    my $bus_type    = shift;
     my $source_type = shift;
 
-    return $self->findConnectionsByDirection($target, $bus_type,
-                                             $source_type, 1);
+    return $self->findConnectionsByDirection( $target, $bus_type, $source_type, 1 );
 
 }
 
@@ -1282,32 +1252,32 @@ sub findDestConnections
 # $to_this_target indicates the direction to find.
 sub findConnectionsByDirection
 {
-    my $self     = shift;
-    my $target   = shift;
-    my $bus_type = shift;
+    my $self           = shift;
+    my $target         = shift;
+    my $bus_type       = shift;
     my $other_end_type = shift;
     my $to_this_target = shift;
 
     my %connections;
-    my $num=0;
+    my $num             = 0;
     my $target_children = $self->getTargetChildren($target);
-    if ($target_children eq "")
+    if ( $target_children eq "" )
     {
         return "";
     }
 
-    foreach my $child ($self->getAllTargetChildren($target))
+    foreach my $child ( $self->getAllTargetChildren($target) )
     {
         my $child_bus_type = "";
-        if (!$self->isBadAttribute($child, "BUS_TYPE"))
+        if ( !$self->isBadAttribute( $child, "BUS_TYPE" ) )
         {
             $child_bus_type = $self->getBusType($child);
         }
 
-        if ($child_bus_type eq $bus_type)
+        if ( $child_bus_type eq $bus_type )
         {
             my $numOfConnections = 0;
-            if($to_this_target)
+            if ($to_this_target)
             {
                 $numOfConnections = $self->getNumDestConnections($child);
             }
@@ -1316,77 +1286,82 @@ sub findConnectionsByDirection
                 $numOfConnections = $self->getNumConnections($child);
             }
 
-            for (my $i = 0; $i < $numOfConnections; $i++)
+            for ( my $i = 0; $i < $numOfConnections; $i++ )
             {
                 my $other_end_target = undef;
-                if($to_this_target)
+                if ($to_this_target)
                 {
-                    $other_end_target = $self->getConnectionSource($child, $i);
+                    $other_end_target = $self->getConnectionSource( $child, $i );
                 }
                 else
                 {
-                    $other_end_target = $self->getConnectionDestination($child,
-                                                                        $i);
+                    $other_end_target = $self->getConnectionDestination( $child, $i );
                 }
 
                 my $other_end_parent = $self->getTargetParent($other_end_target);
-                my $type        = $self->getMrwType($other_end_parent);
-                my $dest_type   = $self->getType($other_end_parent);
-                my $dest_class  = $self->getAttribute($other_end_parent,"CLASS");
+                my $type             = $self->getMrwType($other_end_parent);
+                my $dest_type        = $self->getType($other_end_parent);
+                my $dest_class       = $self->getAttribute( $other_end_parent, "CLASS" );
 
-                if ($type eq "NA")
+                if ( $type eq "NA" )
                 {
                     $type = $dest_type;
                 }
-                if ($type eq "NA") {
+                if ( $type eq "NA" )
+                {
                     $type = $dest_class;
                 }
 
-                if ($other_end_type ne "") {
+                if ( $other_end_type ne "" )
+                {
                     #Look for an other_end_type match on any ancestor, as
                     #connections may have a destination unit with a hierarchy
                     #like unit->pingroup->muxgroup->chip where the chip has
                     #the interesting type.
-                    while ($type ne $other_end_type) {
+                    while ( $type ne $other_end_type )
+                    {
                         $other_end_parent = $self->getTargetParent($other_end_parent);
-                        if ($other_end_parent eq "") {
+                        if ( $other_end_parent eq "" )
+                        {
                             last;
                         }
                         $type = $self->getMrwType($other_end_parent);
-                        if ($type eq "NA") {
+                        if ( $type eq "NA" )
+                        {
                             $type = $self->getType($other_end_parent);
                         }
-                        if ($type eq "NA") {
-                            $type = $self->getAttribute($other_end_parent, "CLASS");
+                        if ( $type eq "NA" )
+                        {
+                            $type = $self->getAttribute( $other_end_parent, "CLASS" );
                         }
                     }
                 }
 
-                if ($type eq $other_end_type || $other_end_type eq "")
+                if ( $type eq $other_end_type || $other_end_type eq "" )
                 {
-                    if($to_this_target)
+                    if ($to_this_target)
                     {
-                        $connections{CONN}[$num]{SOURCE}=$other_end_target;
-                        $connections{CONN}[$num]{SOURCE_PARENT}=
-                                                $other_end_parent;
-                        $connections{CONN}[$num]{DEST}=$child;
-                        $connections{CONN}[$num]{DEST_PARENT}=$target;
+                        $connections{CONN}[$num]{SOURCE} = $other_end_target;
+                        $connections{CONN}[$num]{SOURCE_PARENT} =
+                            $other_end_parent;
+                        $connections{CONN}[$num]{DEST}        = $child;
+                        $connections{CONN}[$num]{DEST_PARENT} = $target;
                     }
                     else
                     {
-                        $connections{CONN}[$num]{SOURCE}=$child;
-                        $connections{CONN}[$num]{SOURCE_PARENT}=$target;
-                        $connections{CONN}[$num]{DEST}=$other_end_target;
-                        $connections{CONN}[$num]{DEST_PARENT}=$other_end_parent;
+                        $connections{CONN}[$num]{SOURCE}        = $child;
+                        $connections{CONN}[$num]{SOURCE_PARENT} = $target;
+                        $connections{CONN}[$num]{DEST}          = $other_end_target;
+                        $connections{CONN}[$num]{DEST_PARENT}   = $other_end_parent;
                     }
-                    $connections{CONN}[$num]{BUS_NUM}=$i;
+                    $connections{CONN}[$num]{BUS_NUM} = $i;
                     $num++;
                 }
             }
         }
     }
 
-    if ($num==0) { return ""; }
+    if ( $num == 0 ) { return ""; }
     return \%connections;
 }
 
@@ -1395,8 +1370,8 @@ sub getBusType
 {
     my $self   = shift;
     my $target = shift;
-    my $type   = $self->getAttribute($target, "BUS_TYPE");
-    if ($type eq "") { $type = "NA"; }
+    my $type   = $self->getAttribute( $target, "BUS_TYPE" );
+    if ( $type eq "" ) { $type = "NA"; }
     return $type;
 }
 
@@ -1405,8 +1380,8 @@ sub getType
 {
     my $self   = shift;
     my $target = shift;
-    my $type   = $self->getAttribute($target, "TYPE");
-    if ($type eq "") { $type = "NA"; }
+    my $type   = $self->getAttribute( $target, "TYPE" );
+    if ( $type eq "" ) { $type = "NA"; }
     return $type;
 }
 
@@ -1415,8 +1390,8 @@ sub getMrwType
 {
     my $self   = shift;
     my $target = shift;
-    my $type   = $self->getAttribute($target, "MRW_TYPE");
-    if ($type eq "") { $type = "NA"; }
+    my $type   = $self->getAttribute( $target, "MRW_TYPE" );
+    if ( $type eq "" ) { $type = "NA"; }
     return $type;
 }
 
@@ -1432,13 +1407,13 @@ sub getInstanceName
 ## returns target instance number
 sub getInstanceNum
 {
-    my $self       = shift;
-    my $target     = shift;
-    my $name       = $self->getInstanceName($target);
+    my $self   = shift;
+    my $target = shift;
+    my $name   = $self->getInstanceName($target);
     my $num;
 
     ($num) = $name =~ /(\d+)$/;
-    if ("" eq $num) { $num = 0; }
+    if ( "" eq $num ) { $num = 0; }
 
     return $num;
 }
@@ -1451,7 +1426,6 @@ sub getTargetType
     my $target_ptr = $self->getTarget($target);
     return $target_ptr->{TARGET}->{type};
 }
-
 
 #--------------------------------------------------
 # @brief Checks the given target for given attribute
@@ -1471,14 +1445,14 @@ sub getTargetType
 #--------------------------------------------------
 sub doesAttributeExistForTarget
 {
-    my $self       = shift;
-    my $target     = shift;
-    my $attribute  = shift;
+    my $self      = shift;
+    my $target    = shift;
+    my $attribute = shift;
 
     my $target_ptr = $self->getTarget($target);
 
     # If can't locate attribute for target then return back 0 (false)
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute} ) )
     {
         return 0;
     }
@@ -1496,20 +1470,20 @@ sub isBadAttribute
     my $attribute  = shift;
     my $badvalue   = shift;
     my $target_ptr = $self->getTarget($target);
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute} ) )
     {
         return 1;
     }
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}->{default}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute}->{default} ) )
     {
         return 1;
     }
-    if ($target_ptr->{ATTRIBUTES}->{$attribute}->{default} eq "")
+    if ( $target_ptr->{ATTRIBUTES}->{$attribute}->{default} eq "" )
     {
         return 1;
     }
-    if (defined $badvalue &&
-        $target_ptr->{ATTRIBUTES}->{$attribute}->{default} eq $badvalue)
+    if ( defined $badvalue
+        && $target_ptr->{ATTRIBUTES}->{$attribute}->{default} eq $badvalue )
     {
         return 1;
     }
@@ -1528,34 +1502,32 @@ sub isBadComplexAttribute
     my $badvalue   = shift;
     my $target_ptr = $self->getTarget($target);
 
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute} ) )
     {
         confess "isBadComplexAttribute no attribute";
         return 1;
     }
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}->{default}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute}->{default} ) )
     {
         confess "isBadComplexAttribute no default";
         return 1;
     }
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field} ) )
     {
         confess "isBadComplexAttribute no default field";
         return 1;
     }
-    if ($field eq "")
+    if ( $field eq "" )
     {
         confess "isBadComplexAttribute blank value for field";
         return 1;
     }
-    if ($target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field}->{$field}
-        ->{value} eq "")
+    if ( $target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field}->{$field}->{value} eq "" )
     {
         confess "isBadComplexAttribute blank value in field";
         return 1;
     }
-    if ($target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field}->{$field}
-        ->{value} eq $badvalue)
+    if ( $target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field}->{$field}->{value} eq $badvalue )
     {
         confess "isBadComplexAttribute bad value in field";
         return 1;
@@ -1571,19 +1543,18 @@ sub getAttribute
     my $attribute  = shift;
     my $target_ptr = $self->getTarget($target);
 
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}->{default}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute}->{default} ) )
     {
-        print "ERROR: getAttribute(".$target.",".$attribute.")\n";
-        confess ("Attribute not defined\n");
+        print "ERROR: getAttribute(" . $target . "," . $attribute . ")\n";
+        confess("Attribute not defined\n");
         $self->myExit(4);
     }
-    if (ref($target_ptr->{ATTRIBUTES}->{$attribute}->{default}) eq "HASH")
+    if ( ref( $target_ptr->{ATTRIBUTES}->{$attribute}->{default} ) eq "HASH" )
     {
         return "";
     }
     return $target_ptr->{ATTRIBUTES}->{$attribute}->{default};
 }
-
 
 sub getAttributeGroup
 {
@@ -1591,15 +1562,15 @@ sub getAttributeGroup
     my $target     = shift;
     my $group      = shift;
     my $target_ptr = $self->getTarget($target);
-    if (!defined($self->{groups}->{$group})) {
-        printf("ERROR: getAttributeGroup(%s,%s) | Group not defined\n",
-            $target, $group);
+    if ( !defined( $self->{groups}->{$group} ) )
+    {
+        printf( "ERROR: getAttributeGroup(%s,%s) | Group not defined\n", $target, $group );
         $self->myExit(4);
     }
     my %attr;
-    foreach my $attribute (keys(%{$self->{groups}->{$group}}))
+    foreach my $attribute ( keys( %{ $self->{groups}->{$group} } ) )
     {
-        if (defined($target_ptr->{ATTRIBUTES}->{$attribute}->{default}))
+        if ( defined( $target_ptr->{ATTRIBUTES}->{$attribute}->{default} ) )
         {
             $attr{$attribute} = $target_ptr->{ATTRIBUTES}->{$attribute};
         }
@@ -1614,13 +1585,13 @@ sub deleteAttribute
     my $target     = shift;
     my $Name       = shift;
     my $target_ptr = $self->{data}->{TARGETS}->{$target};
-    if (!defined($target_ptr->{ATTRIBUTES}->{$Name}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$Name} ) )
     {
         return 1;
     }
 
-    delete($target_ptr->{ATTRIBUTES}->{$Name});
-    $self->log($target, "Deleting attribute: $Name");
+    delete( $target_ptr->{ATTRIBUTES}->{$Name} );
+    $self->log( $target, "Deleting attribute: $Name" );
     return 0;
 }
 
@@ -1632,29 +1603,29 @@ sub renameAttribute
     my $oldName    = shift;
     my $newName    = shift;
     my $target_ptr = $self->{data}->{TARGETS}->{$target};
-    if (!defined($target_ptr->{ATTRIBUTES}->{$oldName}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$oldName} ) )
     {
         return 1;
     }
     $target_ptr->{ATTRIBUTES}->{$newName}->{default} =
-      $target_ptr->{ATTRIBUTES}->{$oldName}->{default};
-    delete($target_ptr->{ATTRIBUTES}->{$oldName});
-    $self->log($target, "Renaming attribute: $oldName => $newName");
+        $target_ptr->{ATTRIBUTES}->{$oldName}->{default};
+    delete( $target_ptr->{ATTRIBUTES}->{$oldName} );
+    $self->log( $target, "Renaming attribute: $oldName => $newName" );
     return 0;
 }
 
 ## copy an attribute between targets
 sub copyAttribute
 {
-    my $self = shift;
+    my $self          = shift;
     my $source_target = shift;
-    my $dest_target = shift;
-    my $attribute = shift;
+    my $dest_target   = shift;
+    my $attribute     = shift;
 
-    my $value=$self->getAttribute($source_target,$attribute);
-    $self->setAttribute($dest_target,$attribute,$value);
+    my $value = $self->getAttribute( $source_target, $attribute );
+    $self->setAttribute( $dest_target, $attribute, $value );
 
-    $self->log($dest_target, "Copy Attribute: $attribute=$value");
+    $self->log( $dest_target, "Copy Attribute: $attribute=$value" );
 }
 
 #--------------------------------------------------
@@ -1677,8 +1648,8 @@ sub copyAttributeField
     my $attribute  = shift;
     my $field      = shift;
 
-    my $fieldValue = $self->getAttributeField($srcTarget, $attribute, $field);
-    $self->setAttributeField($destTarget, $attribute, $field, $fieldValue);
+    my $fieldValue = $self->getAttributeField( $srcTarget, $attribute, $field );
+    $self->setAttributeField( $destTarget, $attribute, $field, $fieldValue );
 }
 
 #--------------------------------------------------
@@ -1709,10 +1680,11 @@ sub copySrcAttributeFieldToDestAttributeField
     my $field         = shift;
 
     # Copy the field from the source target's attribute
-    my $fieldValue = $self->getAttributeField($srcTarget, $srcAttribute, $field);
+    my $fieldValue = $self->getAttributeField( $srcTarget, $srcAttribute, $field );
+
     # Write the field to the destination target's attribute. where the attribute
     # may not be same as the source target's, but the field are the same.
-    $self->setAttributeField($destTarget, $destAttribute, $field, $fieldValue);
+    $self->setAttributeField( $destTarget, $destAttribute, $field, $fieldValue );
 }
 
 #--------------------------------------------------
@@ -1728,17 +1700,17 @@ sub copySrcAttributeFieldToDestAttributeField
 #--------------------------------------------------
 sub copyAttributeFields
 {
-    my $self = shift;
-    my $srcTarget = shift;
+    my $self       = shift;
+    my $srcTarget  = shift;
     my $destTarget = shift;
-    my $attribute = shift;
+    my $attribute  = shift;
 
-    foreach my $field(sort keys
-        %{$self->{data}->{TARGETS}->{$srcTarget}->{ATTRIBUTES}->{$attribute}->{default}->{field}})
+    foreach my $field (
+        sort keys %{ $self->{data}->{TARGETS}->{$srcTarget}->{ATTRIBUTES}->{$attribute}->{default}->{field} } )
     {
-        my $fieldVal = $self->getAttributeField($srcTarget, $attribute, $field);
-        $self->setAttributeField($destTarget, $attribute, $field, $fieldVal);
-        $self->log($destTarget, "Copy Attribute Field:$attribute($field)=$fieldVal");
+        my $fieldVal = $self->getAttributeField( $srcTarget, $attribute, $field );
+        $self->setAttributeField( $destTarget, $attribute, $field, $fieldVal );
+        $self->log( $destTarget, "Copy Attribute Field:$attribute($field)=$fieldVal" );
     }
 }
 
@@ -1751,7 +1723,7 @@ sub setAttribute
     my $value      = shift;
     my $target_ptr = $self->getTarget($target);
     $target_ptr->{ATTRIBUTES}->{$attribute}->{default} = $value;
-    $self->log($target, "Setting Attribute: $attribute=$value");
+    $self->log( $target, "Setting Attribute: $attribute=$value" );
 }
 ## sets the field of a complex attribute
 sub setAttributeField
@@ -1761,9 +1733,8 @@ sub setAttributeField
     my $attribute = shift;
     my $field     = shift;
     my $value     = shift;
-    $self->{data}->{TARGETS}->{$target}->{ATTRIBUTES}->{$attribute}->{default}
-      ->{field}->{$field}->{value} = $value;
-    $self->log($target, "Setting Attribute: $attribute ($field) =$value");
+    $self->{data}->{TARGETS}->{$target}->{ATTRIBUTES}->{$attribute}->{default}->{field}->{$field}->{value} = $value;
+    $self->log( $target, "Setting Attribute: $attribute ($field) =$value" );
 }
 ## returns complex attribute value
 sub getAttributeField
@@ -1773,17 +1744,14 @@ sub getAttributeField
     my $attribute  = shift;
     my $field      = shift;
     my $target_ptr = $self->getTarget($target);
-    if (!defined($target_ptr->{ATTRIBUTES}->{$attribute}->
-       {default}->{field}->{$field}->{value}))
+    if ( !defined( $target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field}->{$field}->{value} ) )
     {
-        printf("ERROR: getAttributeField(%s,%s,%s) | Attribute not defined\n",
-            $target, $attribute,$field);
+        printf( "ERROR: getAttributeField(%s,%s,%s) | Attribute not defined\n", $target, $attribute, $field );
 
         $self->myExit(4);
     }
 
-    return $target_ptr->{ATTRIBUTES}->{$attribute}->
-           {default}->{field}->{$field}->{value};
+    return $target_ptr->{ATTRIBUTES}->{$attribute}->{default}->{field}->{$field}->{value};
 }
 
 ## returns an attribute from a bus
@@ -1795,23 +1763,16 @@ sub getBusAttribute
     my $attr       = shift;
     my $target_ptr = $self->getTarget($target);
 
-    if (
-        !defined(
-            $target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}
-              ->{$attr}->{default}
-        )
-      )
+    if ( !defined( $target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}->{$attr}->{default} ) )
     {
-        printf("ERROR: getBusAttribute(%s,%d,%s) | Attribute not defined\n",
-            $target, $busnum, $attr);
+        printf( "ERROR: getBusAttribute(%s,%d,%s) | Attribute not defined\n", $target, $busnum, $attr );
         $self->myExit(4);
     }
-   if (ref($target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}->{$attr}
-      ->{default}) eq  "HASH") {
-        return  "";
+    if ( ref( $target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}->{$attr}->{default} ) eq "HASH" )
+    {
+        return "";
     }
-    return $target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}->{$attr}
-      ->{default};
+    return $target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}->{$attr}->{default};
 }
 
 ## returns a boolean for if a given bus attribute is defined
@@ -1823,8 +1784,7 @@ sub isBusAttributeDefined
     my $attr       = shift;
     my $target_ptr = $self->getTarget($target);
 
-    return defined($target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}
-            ->{$attr}->{default});
+    return defined( $target_ptr->{CONNECTION}->{BUS}->[$busnum]->{bus_attribute}->{$attr}->{default} );
 }
 
 #--------------------------------------------------
@@ -1846,16 +1806,15 @@ sub getBusConnBusAttr
     my $busConnection = shift;
     my $attribute     = shift;
 
-    if ( !defined($busConnection->{bus_attribute}->{$attribute}->{default}) )
+    if ( !defined( $busConnection->{bus_attribute}->{$attribute}->{default} ) )
     {
-        printf("ERROR: getBusConnBusAttr(%s, %s) | " .
-               "Attribute not defined\n", $busConnection, $attribute);
+        printf( "ERROR: getBusConnBusAttr(%s, %s) | " . "Attribute not defined\n", $busConnection, $attribute );
         $self->myExit(4);
     }
 
-    if (ref($busConnection->{bus_attribute}->{$attribute}->{default}) eq  "HASH")
+    if ( ref( $busConnection->{bus_attribute}->{$attribute}->{default} ) eq "HASH" )
     {
-        return  "";
+        return "";
     }
 
     return $busConnection->{bus_attribute}->{$attribute}->{default};
@@ -1881,7 +1840,7 @@ sub isBusConnBusAttrDefined
     my $busConnection = shift;
     my $attribute     = shift;
 
-    return defined($busConnection->{bus_attribute}->{$attribute}->{default});
+    return defined( $busConnection->{bus_attribute}->{$attribute}->{default} );
 }
 
 ## returns a pointer to an array of children target names
@@ -1901,15 +1860,15 @@ sub getTargetChildrenByType
     my $self        = shift;
     my $target      = shift;
     my $typeToMatch = shift;
-    my $target_ptr = $self->getTarget($target);
+    my $target_ptr  = $self->getTarget($target);
 
     my @children;
-    foreach my $child (@{ $self->getTargetChildren($target) })
+    foreach my $child ( @{ $self->getTargetChildren($target) } )
     {
         my $childType = $self->getType($child);
-        if ($childType eq $typeToMatch)
+        if ( $childType eq $typeToMatch )
         {
-            push(@children,$child);
+            push( @children, $child );
         }
     }
 
@@ -1925,7 +1884,7 @@ sub getAllTargetChildren
     my @children;
 
     my $targets = $self->getTargetChildren($target);
-    if ($targets ne "")
+    if ( $targets ne "" )
     {
         for my $child (@$targets)
         {
@@ -1943,10 +1902,9 @@ sub getEnumValue
     my $self     = shift;
     my $enumType = shift;
     my $enumName = shift;
-    if (!defined($self->{enumeration}->{$enumType}->{$enumName}))
+    if ( !defined( $self->{enumeration}->{$enumType}->{$enumName} ) )
     {
-        printf("ERROR: getEnumValue(%s,%s) | enumType not defined\n",
-            $enumType, $enumName);
+        printf( "ERROR: getEnumValue(%s,%s) | enumType not defined\n", $enumType, $enumName );
         $self->myExit(4);
     }
     return $self->{enumeration}->{$enumType}->{$enumName};
@@ -1957,11 +1915,10 @@ sub getEnumHash
     my $self     = shift;
     my $enumType = shift;
     my $enumName = shift;
-    if (!defined($self->{enumeration}->{$enumType}))
+    if ( !defined( $self->{enumeration}->{$enumType} ) )
     {
-        printf("ERROR: getEnumValue(%s) | enumType not defined\n",
-            $enumType);
-            print Dumper($self->{enumeration});
+        printf( "ERROR: getEnumValue(%s) | enumType not defined\n", $enumType );
+        print Dumper( $self->{enumeration} );
         $self->myExit(4);
     }
     return $self->{enumeration}->{$enumType};
@@ -2000,31 +1957,32 @@ sub setHuid
     my $type    = $self->getType($target);
     my $type_id = $self->{enumeration}->{TYPE}->{$type};
 
-    if ($type eq "" || $type eq "NA")
+    if ( $type eq "" || $type eq "NA" )
     {
-        if (defined ($self->getAttribute($target,"BUS_TYPE")))
+        if ( defined( $self->getAttribute( $target, "BUS_TYPE" ) ) )
         {
-            $type = $self->getAttribute($target,"BUS_TYPE");
+            $type = $self->getAttribute( $target, "BUS_TYPE" );
             $type_id = $self->{enumeration}->{TYPE}->{$type};
-            if ($type_id eq "") {$type_id = $self->{enumeration}->{BUS_TYPE}->{$type};}
+            if ( $type_id eq "" ) { $type_id = $self->{enumeration}->{BUS_TYPE}->{$type}; }
         }
     }
 
-    if ( ($type_id eq "") || ($type_id == 0 ) )
+    if ( ( $type_id eq "" ) || ( $type_id == 0 ) )
     {
         return;
     }
 
     # If caller supplied an index, then cache the index
-    if ($index ne undef)
+    if ( $index ne undef )
     {
         $self->{huid_idx}->{$type} = $index;
     }
+
     # If caller did not supply an index, then calculate one
     else
     {
         # If no index cached, then cache a 0 index to start with
-        if (not defined($self->{huid_idx}->{$type}))
+        if ( not defined( $self->{huid_idx}->{$type} ) )
         {
             $self->{huid_idx}->{$type} = 0;
         }
@@ -2033,13 +1991,13 @@ sub setHuid
     }
 
     # Format: SSSS NNNN TTTTTTTT iiiiiiiiiiiiiiii
-    my $huid = sprintf("%01x%01x%02x%04x", $sys, $node, $type_id, $index);
+    my $huid = sprintf( "%01x%01x%02x%04x", $sys, $node, $type_id, $index );
     $huid = "0x" . uc($huid);
 
-    $self->setAttribute($target, "HUID", $huid);
+    $self->setAttribute( $target, "HUID", $huid );
     $self->{huid_idx}->{$type}++;
-    $self->log($target, "Setting HUID: $huid");
-    $self->setMruid($target, $node);
+    $self->log( $target, "Setting HUID: $huid" );
+    $self->setMruid( $target, $node );
 }
 
 sub setMruid
@@ -2051,22 +2009,22 @@ sub setMruid
     my $type          = $self->getType($target);
     my $mru_prefix_id = $self->{enumeration}->{MRU_PREFIX}->{$type};
 
-    if ( (!defined $mru_prefix_id) ||
-         ($mru_prefix_id eq "")    ||
-         ($mru_prefix_id eq "0xFFFF") )
+    if (   ( !defined $mru_prefix_id )
+        || ( $mru_prefix_id eq "" )
+        || ( $mru_prefix_id eq "0xFFFF" ) )
     {
         return;
     }
 
     my $index = 0;
-    if (defined($self->{mru_idx}->{$node}->{$type}))
+    if ( defined( $self->{mru_idx}->{$node}->{$type} ) )
     {
         $index = $self->{mru_idx}->{$node}->{$type};
     }
     else { $self->{mru_idx}->{$node}->{$type} = 0; }
 
-    my $mruid = sprintf("%s%04x", $mru_prefix_id, $index);
-    $self->setAttribute($target, "MRU_ID", $mruid);
+    my $mruid = sprintf( "%s%04x", $mru_prefix_id, $index );
+    $self->setAttribute( $target, "MRU_ID", $mruid );
     $self->{mru_idx}->{$node}->{$type}++;
 }
 
@@ -2078,15 +2036,15 @@ sub getMasterProc
 
 sub setMasterProc
 {
-    my $self = shift;
+    my $self   = shift;
     my $target = shift;
-    $self->{master_proc}=$target;
+    $self->{master_proc} = $target;
 }
 
 sub getSystemName
 {
     my $self = shift;
-    return $self->getAttribute("/".$self->{TOP_LEVEL}, "SYSTEM_NAME");
+    return $self->getAttribute( "/" . $self->{TOP_LEVEL}, "SYSTEM_NAME" );
 }
 
 #--------------------------------------------------
@@ -2107,17 +2065,17 @@ sub getDimmPort
 
     #We will converge on MEM_PORT eventually, but
     # we are leaving in support for everything for now
-    if (!$self->isBadAttribute($targ, "MEM_PORT"))
+    if ( !$self->isBadAttribute( $targ, "MEM_PORT" ) )
     {
-        $port_num = $self->getAttribute($targ,"MEM_PORT");
+        $port_num = $self->getAttribute( $targ, "MEM_PORT" );
     }
-    elsif (!$self->isBadAttribute($targ, "CEN_MBA_PORT"))
+    elsif ( !$self->isBadAttribute( $targ, "CEN_MBA_PORT" ) )
     {
-        $port_num = $self->getAttribute($targ,"CEN_MBA_PORT");
+        $port_num = $self->getAttribute( $targ, "CEN_MBA_PORT" );
     }
-    elsif( !$self->isBadAttribute($targ, "MBA_PORT"))
+    elsif ( !$self->isBadAttribute( $targ, "MBA_PORT" ) )
     {
-        $port_num = $self->getAttribute($targ,"MBA_PORT");
+        $port_num = $self->getAttribute( $targ, "MBA_PORT" );
     }
     else
     {
@@ -2146,17 +2104,17 @@ sub getDimmPos
 
     #We will converge on POS_ON_MEM_PORT eventually, but
     # we are leaving in support for everything for now
-    if (!$self->isBadAttribute($targ, "POS_ON_MEM_PORT"))
+    if ( !$self->isBadAttribute( $targ, "POS_ON_MEM_PORT" ) )
     {
-        $dimm_num = $self->getAttribute($targ,"POS_ON_MEM_PORT");
+        $dimm_num = $self->getAttribute( $targ, "POS_ON_MEM_PORT" );
     }
-    elsif (!$self->isBadAttribute($targ, "CEN_MBA_DIMM"))
+    elsif ( !$self->isBadAttribute( $targ, "CEN_MBA_DIMM" ) )
     {
-        $dimm_num = $self->getAttribute($targ,"CEN_MBA_DIMM");
+        $dimm_num = $self->getAttribute( $targ, "CEN_MBA_DIMM" );
     }
-    elsif( !$self->isBadAttribute($targ, "MBA_DIMM"))
+    elsif ( !$self->isBadAttribute( $targ, "MBA_DIMM" ) )
     {
-        $dimm_num = $self->getAttribute($targ,"MBA_DIMM");
+        $dimm_num = $self->getAttribute( $targ, "MBA_DIMM" );
     }
     else
     {
@@ -2171,9 +2129,9 @@ sub myExit
 {
     my $self      = shift;
     my $exit_code = shift;
-    if ($exit_code eq "") { $exit_code = 0; }
+    if ( $exit_code eq "" ) { $exit_code = 0; }
     $self->{errorsExist} = 1;
-    if ($self->{force} == 0)
+    if ( $self->{force} == 0 )
     {
         exit($exit_code);
     }
@@ -2184,26 +2142,27 @@ sub log
     my $self   = shift;
     my $target = shift;
     my $msg    = shift;
-    if ($self->{debug})
+    if ( $self->{debug} )
     {
         print "DEBUG: ($target) $msg\n";
     }
 }
+
 sub writeReport
 {
-    my $self   = shift;
-    my $msg    = shift;
-    $self->{report_log}=$self->{report_log}.$msg;
+    my $self = shift;
+    my $msg  = shift;
+    $self->{report_log} = $self->{report_log} . $msg;
 }
+
 sub writeReportFile
 {
-    my $self   = shift;
-    open(R,">$self->{report_filename}") ||
-          die "Unable to create file: ".$self->{report_filename};
+    my $self = shift;
+    open( R, ">$self->{report_filename}" )
+        || die "Unable to create file: " . $self->{report_filename};
     print R $self->{report_log};
     close R;
 }
-
 
 ###############################################################################
 # Useful Utilites
@@ -2220,25 +2179,25 @@ sub writeReportFile
 #--------------------------------------------------
 sub printFullTargetHierarchy
 {
-    my $self = shift;
+    my $self     = shift;
     my $filename = shift;
-    my $target = shift;
+    my $target   = shift;
 
-    if ($filename eq "")
+    if ( $filename eq "" )
     {
         die "Must provide an XML file to process.\n";
     }
 
     # Only want to load the XML file once.
     state $isXmlFileLoaded = 0;
-    if (0 == $isXmlFileLoaded )
+    if ( 0 == $isXmlFileLoaded )
     {
         $self->__loadAndBuildMrwHierarchy__($filename);
         $isXmlFileLoaded = 1;
     }
 
     # If no target given, use the top level target
-    if ($target eq undef)
+    if ( $target eq undef )
     {
         $target = "/" . $self->getTopLevel();
         print "$target \n";
@@ -2246,35 +2205,31 @@ sub printFullTargetHierarchy
 
     # Iterate over the children
     my $children = $self->getTargetChildren($target);
-    foreach my $child (@{ $children })
+    foreach my $child ( @{$children} )
     {
         print "$child \n";
-        $self->printFullTargetHierarchy($filename, $child);
+        $self->printFullTargetHierarchy( $filename, $child );
     }
-} # end sub printFullTargetHierarchy
-
+}    # end sub printFullTargetHierarchy
 
 sub __loadAndBuildMrwHierarchy__
 {
-    my $self = shift;
+    my $self     = shift;
     my $filename = shift;
 
     $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
     print "Loading MRW XML: $filename\n";
     $self->{xml} =
-    XMLin($filename,forcearray => [ 'child_id', 'hidden_child_id', 'bus',
-                                    'property', 'field', 'attribute',
-                                    'enumerator' ]);
+        XMLin( $filename,
+        forcearray => [ 'child_id', 'hidden_child_id', 'bus', 'property', 'field', 'attribute', 'enumerator' ] );
 
-    if (defined($self->{xml}->{'enumerationTypes'}))
+    if ( defined( $self->{xml}->{'enumerationTypes'} ) )
     {
         $self->{xml_version} = 1;
     }
 
     $self->buildHierarchy();
 }
-
-
 
 ###############################################################################
 # The end of the perl module
@@ -2284,7 +2239,6 @@ sub __loadAndBuildMrwHierarchy__
 # @details Don't forget to return the true value (1) from this file
 ###############################################################################
 1;
-
 
 ###############################################################################
 # Perl documentation

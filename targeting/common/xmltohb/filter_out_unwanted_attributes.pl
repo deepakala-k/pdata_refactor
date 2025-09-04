@@ -43,13 +43,13 @@ my $help;
 my $verbose;
 
 GetOptions(
-    "tgt-xml=s"    => \@tgt_files,
-    "mrw-xml=s"    => \$mrw_file,
-    "help"         => \$help,
-    "verbose|v"      => \$verbose,
+    "tgt-xml=s" => \@tgt_files,
+    "mrw-xml=s" => \$mrw_file,
+    "help"      => \$help,
+    "verbose|v" => \$verbose,
 );
 
-if ((scalar @tgt_files eq 0) || ($mrw_file eq ""))
+if ( ( scalar @tgt_files eq 0 ) || ( $mrw_file eq "" ) )
 {
     print "ERROR: tgt-xml or mrw-xml is not specified\n";
     print "tgt-xml: \n";
@@ -76,41 +76,39 @@ sub usage
     print "Usage: ./filter_out_unwanted_attributes.pl --mrw-xml [mrw xml]\\\n";
     print "     --tgt-xml [common target xml] (optional --tgt-xml [platform target xml])\n";
     print "     --verbose (or -v)\n";
-    exit (-1);
+    exit(-1);
 }
-
 
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
 #Merge both the files to merge all extension target into target types and add
 #new target types which is coming from platform specific target
-open (FH, "<$tgt_files[0]") ||
-    die "ERROR: unable to open $tgt_files[0]\n";
-close (FH);
+open( FH, "<$tgt_files[0]" )
+    || die "ERROR: unable to open $tgt_files[0]\n";
+close(FH);
 
-open (FH, "<$tgt_files[1]") ||
-    die "ERROR: unable to open $tgt_files[1]\n";
-close (FH);
-
+open( FH, "<$tgt_files[1]" )
+    || die "ERROR: unable to open $tgt_files[1]\n";
+close(FH);
 
 my $fileCommon = XMLin("$tgt_files[0]");
-my $filePlatform = XMLin("$tgt_files[1]", ForceArray=>1);
+my $filePlatform = XMLin( "$tgt_files[1]", ForceArray => 1 );
 
 # This loop will fetch all targetTypeExtension from platform target types xml
 # and push it in an array "@NewAttr"
 my @NewAttr;
-foreach my $Extension ( @{$filePlatform->{targetTypeExtension}} )
+foreach my $Extension ( @{ $filePlatform->{targetTypeExtension} } )
 {
     my $id = $Extension->{id}->[0];
-    foreach my $attr ( @{$Extension->{attribute}} )
+    foreach my $attr ( @{ $Extension->{attribute} } )
     {
         my $attribute_id = $attr->{id}->[0];
-        my $default = "";
-        if (exists $attr->{default})
+        my $default      = "";
+        if ( exists $attr->{default} )
         {
             $default = $attr->{default}->[0];
         }
-        if (! exists $fileCommon->{targetType}->{$id}->{attribute}->{$attribute_id})
+        if ( !exists $fileCommon->{targetType}->{$id}->{attribute}->{$attribute_id} )
         {
             push @NewAttr, [ $id, $attribute_id, $default ];
         }
@@ -120,10 +118,10 @@ foreach my $Extension ( @{$filePlatform->{targetTypeExtension}} )
 # Pick up all new added targets which are platform specific fsp/hb, and push the
 # same into an array "@NewTargetType"
 my @NewTargetType;
-foreach my $newTarget ( @{$filePlatform->{targetType}} )
+foreach my $newTarget ( @{ $filePlatform->{targetType} } )
 {
     my $targetId = $newTarget->{id}->[0];
-    push @NewTargetType, [$targetId, $newTarget];
+    push @NewTargetType, [ $targetId, $newTarget ];
 }
 
 #Create a new file from the common target types xml, over which
@@ -131,44 +129,44 @@ foreach my $newTarget ( @{$filePlatform->{targetType}} )
 #then the extension targets will be merged over the existing one.
 
 # Temporary File created for merger
-my $file_name  = "merged_target_types_$$.xml";
-open (my $FILE, '>', $file_name );# To be updated by reading FH
-open (FH, "<$tgt_files[0]"); #To read out each line
+my $file_name = "merged_target_types_$$.xml";
+open( my $FILE, '>', $file_name );    # To be updated by reading FH
+open( FH, "<$tgt_files[0]" );         #To read out each line
 
-my $check = 0;
-my $id = "";
+my $check     = 0;
+my $id        = "";
 my $endOfLine = 0;
-my $attrId = 0;
-while (my $line = <FH>)
+my $attrId    = 0;
+while ( my $line = <FH> )
 {
-    if ( $line =~ /^\s*<targetType>.*/)
+    if ( $line =~ /^\s*<targetType>.*/ )
     {
         $check = 1;
     }
-    elsif ($line =~ /^\s*<attribute>.*/)
+    elsif ( $line =~ /^\s*<attribute>.*/ )
     {
         $attrId = 1;
     }
-    elsif ($line =~ /^\s*<\/attribute>.*/)
+    elsif ( $line =~ /^\s*<\/attribute>.*/ )
     {
         $attrId = 0;
     }
-    elsif ($check == 1 &&  $attrId == 0 && $line =~ /^\s*<id>/)
+    elsif ( $check == 1 && $attrId == 0 && $line =~ /^\s*<id>/ )
     {
         $check = 0;
-        $id = $line;
+        $id    = $line;
         $id =~ s/\n//;
         $id =~ s/.*<id>(.*)<\/id>.*/$1/;
     }
-    elsif ($line =~ /^\s*<\/targetType>.*/)
+    elsif ( $line =~ /^\s*<\/targetType>.*/ )
     {
         for my $i ( 0 .. $#NewAttr )
         {
-            if ($NewAttr[$i][0] eq $id)
+            if ( $NewAttr[$i][0] eq $id )
             {
                 print $FILE "    <attribute>\n";
                 print $FILE "        <id>$NewAttr[$i][1]</id>\n";
-                if ($NewAttr[$i][2] ne "")
+                if ( $NewAttr[$i][2] ne "" )
                 {
                     print $FILE "        <default>$NewAttr[$i][2]</default>\n";
                 }
@@ -176,28 +174,29 @@ while (my $line = <FH>)
             }
         }
     }
-    if ($line =~ /^\s*<\/attributes>.*/)
+    if ( $line =~ /^\s*<\/attributes>.*/ )
     {
         foreach my $newTarget (@NewTargetType)
         {
             print $FILE "<targetType>\n";
             print $FILE "    <id>$newTarget->[1]->{id}->[0]</id>\n";
             print $FILE "    <parent>$newTarget->[1]->{parent}->[0]</parent>\n";
-            foreach my $attrNewTarget ( @{$newTarget->[1]->{attribute}} )
+            foreach my $attrNewTarget ( @{ $newTarget->[1]->{attribute} } )
             {
                 print $FILE "    <attribute>\n";
                 print $FILE "        <id>$attrNewTarget->{id}->[0]</id>\n";
-                if (exists $attrNewTarget->{default})
+                if ( exists $attrNewTarget->{default} )
                 {
-                    if (ref($attrNewTarget->{default}->[0])  eq "HASH")
+                    if ( ref( $attrNewTarget->{default}->[0] ) eq "HASH" )
                     {
-                        if(exists $attrNewTarget->{default}->[0]->{field})
+                        if ( exists $attrNewTarget->{default}->[0]->{field} )
                         {
                             print $FILE "        <default>\n";
                             print $FILE "            <field>\n";
-                            foreach my $attrField ( @{$attrNewTarget->{default}->[0]->{field}} )
+                            foreach my $attrField ( @{ $attrNewTarget->{default}->[0]->{field} } )
                             {
-                                print $FILE "                <id>$attrField->{id}->[0]</id><value>$attrField->{value}->[0]</value>\n";
+                                print $FILE
+                                    "                <id>$attrField->{id}->[0]</id><value>$attrField->{value}->[0]</value>\n";
                             }
                             print $FILE "            </field>\n";
                             print $FILE "        </default>\n";
@@ -210,7 +209,7 @@ while (my $line = <FH>)
                 }
                 print $FILE "    </attribute>\n";
             }
-            if(exists $newTarget->[1]->{fspOnly})
+            if ( exists $newTarget->[1]->{fspOnly} )
             {
                 print $FILE "    <fspOnly/>\n";
             }
@@ -220,14 +219,13 @@ while (my $line = <FH>)
     print $FILE "$line";
 }
 
-close (FH);
-close ($FILE);
-
+close(FH);
+close($FILE);
 
 print "Loading Merged Targeting XML: $file_name\n";
+
 #Load all the merged (common & platform) target_type xml
-my $tgt_xmls = XMLin($file_name,
-                forcearray => ['attribute', 'targetType', 'field', 'targetTypeExtension']);
+my $tgt_xmls = XMLin( $file_name, forcearray => [ 'attribute', 'targetType', 'field', 'targetTypeExtension' ] );
 
 #Load MRW XML
 #Using LibXML parser to parse mrw xml to keep the order of the input xml in the
@@ -235,24 +233,23 @@ my $tgt_xmls = XMLin($file_name,
 #harder to output that xml as is.
 print "Loading MRW XML: $mrw_file\n";
 $XML::LibXML::skipXMLDeclaration = 1;
-my $parser      = XML::LibXML->new();
-my $mrw_parsed  = $parser->parse_file($mrw_file);
+my $parser     = XML::LibXML->new();
+my $mrw_parsed = $parser->parse_file($mrw_file);
 
-if($verbose)
+if ($verbose)
 {
-  print "The following target and attribute pairs are being removed from";
-  print " SYSTEM_hb.mrw.xml as they are not used by hostboot:\n";
+    print "The following target and attribute pairs are being removed from";
+    print " SYSTEM_hb.mrw.xml as they are not used by hostboot:\n";
 }
 
 #foreach targetInstance in the MRW file
-foreach my $tgt
-    ($mrw_parsed->findnodes('/attributes/targetInstance'))
+foreach my $tgt ( $mrw_parsed->findnodes('/attributes/targetInstance') )
 {
     my $tgt_type = $tgt->findnodes('./type');
 
-    if(!defined $tgt_xmls->{'targetType'}->{$tgt_type})
+    if ( !defined $tgt_xmls->{'targetType'}->{$tgt_type} )
     {
-        if($verbose)
+        if ($verbose)
         {
             print "Target of type: $tgt_type not found in the merged target XML!\n";
             print "Removing target $tgt\n";
@@ -262,17 +259,18 @@ foreach my $tgt
     }
 
     #foreach attribute defined in this target
-    foreach my $attr ($tgt->findnodes('./attribute'))
+    foreach my $attr ( $tgt->findnodes('./attribute') )
     {
         my $attr_id = $attr->findnodes('./id');
+
         #findAttribute searches for this target and attribute
         #pair in all the target type xmls
-        my $found = findAttribute($tgt_type, $attr_id);
-        if ($found eq 0)
+        my $found = findAttribute( $tgt_type, $attr_id );
+        if ( $found eq 0 )
         {
             #if the attribute is not found in any of the target_type
             #xmls, then remove it from the mrw xml
-            if($verbose)
+            if ($verbose)
             {
                 print "Removing Attr: $attr_id from Target: $tgt_type \n";
             }
@@ -280,7 +278,7 @@ foreach my $tgt
         }
         else
         {
-            if($verbose)
+            if ($verbose)
             {
                 print "Found Attr $attr_id for Target Type $tgt_type\n";
             }
@@ -298,7 +296,7 @@ sub findAttribute
     my $attr = shift;
     my $targetType;
 
-    if (defined $tgt_xmls->{'targetType'}{$tgt}{attribute}{$attr})
+    if ( defined $tgt_xmls->{'targetType'}{$tgt}{attribute}{$attr} )
     {
         #attribute found under the passed in target in this xml
         return 1;
@@ -306,9 +304,10 @@ sub findAttribute
     else
     {
         my %tgt_hash = %$tgt_xmls;
+
         #if not found in this target, look under parent target
         #some targets are inherrited
-        if (lookAtParentAttributes (\%tgt_hash, $tgt, $attr) eq 1)
+        if ( lookAtParentAttributes( \%tgt_hash, $tgt, $attr ) eq 1 )
         {
             return 1;
         }
@@ -325,33 +324,33 @@ sub findAttribute
 # retval: true == attr found, false == attr not found
 sub lookAtParentAttributes
 {
-    my ($tgt_xmls, $tgt, $attr) = @_;
+    my ( $tgt_xmls, $tgt, $attr ) = @_;
 
     my $parent = $tgt_xmls->{'targetType'}{$tgt}{parent};
-    if ($parent eq "")
+    if ( $parent eq "" )
     {
         return 0;
     }
-    elsif ($parent eq "base")
+    elsif ( $parent eq "base" )
     {
-         return (defined  $tgt_xmls->{'targetType'}{$parent}{attribute}{$attr}) ?
-                        1 : 0;
+        return ( defined $tgt_xmls->{'targetType'}{$parent}{attribute}{$attr} ) ? 1 : 0;
     }
     else
     {
-        if (defined  $tgt_xmls->{'targetType'}{$parent}{attribute}{$attr})
+        if ( defined $tgt_xmls->{'targetType'}{$parent}{attribute}{$attr} )
         {
             return 1;
         }
         else
         {
             my %tgt_hash = %$tgt_xmls;
+
             #attribute not found, maybe it is inherrited from the parent
             #recursively look for the attribute in this target's parent
             #We will look until we find the attribute, or there is no parent
             #(parent == "") or we have reached the "base" target
             #"base" is the topmost target defined in target_type xml
-            return lookAtParentAttributes(\%tgt_hash, $parent, $attr);
+            return lookAtParentAttributes( \%tgt_hash, $parent, $attr );
         }
     }
 }
@@ -360,7 +359,7 @@ sub lookAtParentAttributes
 my $xml_fh;
 my $filename = $mrw_file . ".updated";
 print "Creating XML: $filename\n";
-open($xml_fh, ">$filename") || die "Unable to create: $filename";
+open( $xml_fh, ">$filename" ) || die "Unable to create: $filename";
 print {$xml_fh} $mrw_parsed->toString();
 close($xml_fh);
 unlink($file_name);

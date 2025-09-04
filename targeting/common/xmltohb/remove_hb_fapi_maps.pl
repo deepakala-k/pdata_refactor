@@ -54,23 +54,23 @@ use Env;
 use XML::LibXML;
 use File::Temp qw(tempfile);
 
-
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
 my $spAttrXml = "";
 my $spTargXml = "";
 my $hbAttrXml = "";
-my $usage = 0;
+my $usage     = 0;
 
-GetOptions("spAttrXml:s"   => \$spAttrXml,
-           "spTargXml:s"   => \$spTargXml,
-           "hbAttrXml:s"   => \$hbAttrXml,
-           "help"          => \$usage);
+GetOptions(
+    "spAttrXml:s" => \$spAttrXml,
+    "spTargXml:s" => \$spTargXml,
+    "hbAttrXml:s" => \$hbAttrXml,
+    "help"        => \$usage
+);
 
-
-if(   ($spAttrXml eq "")
-   || ($spTargXml eq "")
-   || ($hbAttrXml eq "") )
+if (   ( $spAttrXml eq "" )
+    || ( $spTargXml eq "" )
+    || ( $hbAttrXml eq "" ) )
 {
     display_help();
     exit 1;
@@ -86,27 +86,26 @@ my @fixedSpAttrs;
 my @fixedSpTargetAttr;
 
 #use the XML::Simple tool to convert the xml files into hashmaps
-my $xml = new XML::Simple (KeyAttr=>[]);
+my $xml = new XML::Simple( KeyAttr => [] );
 use Digest::MD5 qw(md5_hex);
 
 #read in attribute_types_sp.xml and store in hashmap
-my $spAttributes = $xml->XMLin($spAttrXml ,
-    forcearray => ['attribute','hwpfToHbAttrMap','enumerationType','enumerator']);
+my $spAttributes =
+    $xml->XMLin( $spAttrXml, forcearray => [ 'attribute', 'hwpfToHbAttrMap', 'enumerationType', 'enumerator' ] );
 
 #Read in HB attribute xml (attribute_types.xml)
-my $hbAttributes = $xml->XMLin($hbAttrXml ,
-    forcearray => ['attribute','hwpfToHbAttrMap','enumerationType','enumerator']);
+my $hbAttributes =
+    $xml->XMLin( $hbAttrXml, forcearray => [ 'attribute', 'hwpfToHbAttrMap', 'enumerationType', 'enumerator' ] );
 
 #read in target_types_sp.xml and store in hashmap
-my $spTargets = $xml->XMLin($spTargXml ,
-    forcearray => ['attribute']);
+my $spTargets = $xml->XMLin( $spTargXml, forcearray => ['attribute'] );
 
 #Create a list of all the HB-only attributes(attribute_types_hb) with a HWPF mapping
-foreach my $attribute (@{$hbAttributes->{attribute}})
+foreach my $attribute ( @{ $hbAttributes->{attribute} } )
 {
-    if (exists $attribute->{hwpfToHbAttrMap} )
+    if ( exists $attribute->{hwpfToHbAttrMap} )
     {
-        push (@hbMappedAttrs, $attribute->{hwpfToHbAttrMap}[0]->{id});
+        push( @hbMappedAttrs, $attribute->{hwpfToHbAttrMap}[0]->{id} );
     }
 }
 
@@ -117,78 +116,81 @@ my @spAttributeToRemove;
 #The attribute_types_sp xml does not include HB srcs ,but  we dont want to add EKB
 #attribute that are mapped in attribute_types_hb xml. We need to loop through
 #all of the attributes and make sure we are not overwriting an HB-only attr
-foreach my $spAttribute (@{$spAttributes->{attribute}})
+foreach my $spAttribute ( @{ $spAttributes->{attribute} } )
 {
     my $foundMatch = 0;
+
     #First check if it is an EKB attribute
-    if(exists $spAttribute->{hwpfToHbAttrMap} )
+    if ( exists $spAttribute->{hwpfToHbAttrMap} )
     {
         #if it is an EKB attr, check if it has a mapping in Hb-only xml
         foreach my $id (@hbMappedAttrs)
         {
-            if($id eq $spAttribute->{hwpfToHbAttrMap}[0]->{id})
+            if ( $id eq $spAttribute->{hwpfToHbAttrMap}[0]->{id} )
             {
                 #if it already has a mapping, add to list to remove
                 $foundMatch = 1;
-                push (@spAttributeToRemove, $spAttribute->{id})
+                push( @spAttributeToRemove, $spAttribute->{id} );
             }
         }
     }
+
     #if no hb-only mapping is found , add to list to keep.
-    if (!$foundMatch)
+    if ( !$foundMatch )
     {
-        push (@spAttributeToKeep, $spAttribute);
+        push( @spAttributeToKeep, $spAttribute );
     }
 }
 
 #Remove the attributes from the spAttribute hashmap and
 #replace w/ list of attrs to keep
-undef @{$spAttributes->{attribute}};
-@{$spAttributes->{attribute}} = @spAttributeToKeep;
-
+undef @{ $spAttributes->{attribute} };
+@{ $spAttributes->{attribute} } = @spAttributeToKeep;
 
 #loop on all of the target types defined in target_types_sp
-foreach my $spTarget (@{$spTargets->{targetType}})
+foreach my $spTarget ( @{ $spTargets->{targetType} } )
 {
     #clear local attribute list each loop
     undef @fixedSpTargetAttr;
+
     #loop on each attribute of the target
-    foreach my $targAttr (@{$spTarget->{attribute}})
+    foreach my $targAttr ( @{ $spTarget->{attribute} } )
     {
         my $foundMatch = 0;
+
         #check if any attributes are on the list to be removed
         foreach my $attrToRemoveId (@spAttributeToRemove)
         {
-            if($attrToRemoveId eq $targAttr->{id})
+            if ( $attrToRemoveId eq $targAttr->{id} )
             {
                 $foundMatch = 1;
-                print STDOUT "removing ".$attrToRemoveId."\n";
+                print STDOUT "removing " . $attrToRemoveId . "\n";
             }
         }
-        if (!$foundMatch)
+        if ( !$foundMatch )
         {
-            push (@fixedSpTargetAttr, $targAttr);
+            push( @fixedSpTargetAttr, $targAttr );
         }
     }
 
     #update w/ new attribute list
-    undef @{$spTarget->{attribute}};
-    @{$spTarget->{attribute}} = @fixedSpTargetAttr;
+    undef @{ $spTarget->{attribute} };
+    @{ $spTarget->{attribute} } = @fixedSpTargetAttr;
 }
 
 #need to write contents of both targ and attr xml hashes becuase both were modified
-my $finalTargXmlOutput = $xml->XMLout(\%$spTargets, RootName => 'attributes', NoAttr => 1 );
-my $finalAttrXmlOutput = $xml->XMLout(\%$spAttributes, RootName => 'attributes', NoAttr => 1 );
+my $finalTargXmlOutput = $xml->XMLout( \%$spTargets,    RootName => 'attributes', NoAttr => 1 );
+my $finalAttrXmlOutput = $xml->XMLout( \%$spAttributes, RootName => 'attributes', NoAttr => 1 );
 
-open(my $final_attr_output_fh_temp_w, '>', $spAttrXml ) || die;
+open( my $final_attr_output_fh_temp_w, '>', $spAttrXml ) || die;
 print $final_attr_output_fh_temp_w $finalAttrXmlOutput;
 close $final_attr_output_fh_temp_w;
 
-open(my $final_targ_output_fh_temp_w, '>', $spTargXml ) || die;
+open( my $final_targ_output_fh_temp_w, '>', $spTargXml ) || die;
 print $final_targ_output_fh_temp_w $finalTargXmlOutput;
 close $final_targ_output_fh_temp_w;
 
-  sub display_help
+sub display_help
 {
     use File::Basename;
     my $scriptname = basename($0);
@@ -218,5 +220,4 @@ Usage:
 
 \n";
 }
-
 

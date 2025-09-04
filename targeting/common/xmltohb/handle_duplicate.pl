@@ -54,25 +54,24 @@ require "fapi_utils.pl";
 
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
+my $ekbXmlFullPath      = "";
+my $hbXmlFullPath       = "";
+my $fapi2HeaderFullPath = "";
+my $outFullPath         = "";
+my $usage               = 0;
 
-my $ekbXmlFullPath = "";
-my $hbXmlFullPath    = "";
-my $fapi2HeaderFullPath    = "";
-my $outFullPath    = "";
-my $usage = 0;
+GetOptions(
+    "ekbXmlFile:s"  => \$ekbXmlFullPath,
+    "hbXmlFile:s"   => \$hbXmlFullPath,
+    "fapi2Header:s" => \$fapi2HeaderFullPath,
+    "outFile:s"     => \$outFullPath,
+    "help"          => \$usage
+);
 
-
-GetOptions("ekbXmlFile:s"  => \$ekbXmlFullPath,
-           "hbXmlFile:s"   => \$hbXmlFullPath,
-           "fapi2Header:s" => \$fapi2HeaderFullPath,
-           "outFile:s"     => \$outFullPath,
-           "help"          => \$usage);
-
-
-if( ($ekbXmlFullPath eq "")
-   || ($hbXmlFullPath eq "")
-   || ($fapi2HeaderFullPath eq "")
-   || ($outFullPath eq "") )
+if (   ( $ekbXmlFullPath eq "" )
+    || ( $hbXmlFullPath eq "" )
+    || ( $fapi2HeaderFullPath eq "" )
+    || ( $outFullPath eq "" ) )
 {
     display_help();
     exit 1;
@@ -83,45 +82,40 @@ elsif ($usage)
     exit 0;
 }
 
-
 my %completeAttr;
 
 #attributes defined in attribute_types.xml w/ fapi2 mapping
 my %hwpfAttributes;
 
-
 #use the XML::Simple tool to convert the xml files into hashmaps
-my $xml = new XML::Simple (KeyAttr=>[]);
+my $xml = new XML::Simple( KeyAttr => [] );
 use Digest::MD5 qw(md5_hex);
 
-
 #Read in EKB attribute xml (fapiattrs.xml)
-my $allEKBAttributes = $xml->XMLin($ekbXmlFullPath ,
-    forcearray => ['attribute','hwpfToHbAttrMap','enumerationType','enumerator']);
+my $allEKBAttributes =
+    $xml->XMLin( $ekbXmlFullPath, forcearray => [ 'attribute', 'hwpfToHbAttrMap', 'enumerationType', 'enumerator' ] );
 
 #Read in HB attribute xml (attribute_types.xml)
-my $allHBAttributes = $xml->XMLin($hbXmlFullPath ,
-    forcearray => ['attribute','hwpfToHbAttrMap','enumerationType','enumerator']);
-
+my $allHBAttributes =
+    $xml->XMLin( $hbXmlFullPath, forcearray => [ 'attribute', 'hwpfToHbAttrMap', 'enumerationType', 'enumerator' ] );
 
 #Get a list of all the function backed fapi2 attributes
 my @funcBackedAttr = getFuncionBackedAttrs($fapi2HeaderFullPath);
 
 #Create a list of all the HB attributes with a HWPF mapping
-foreach my $attribute (@{$allHBAttributes->{attribute}})
+foreach my $attribute ( @{ $allHBAttributes->{attribute} } )
 {
-    if (exists $attribute->{hwpfToHbAttrMap} )
+    if ( exists $attribute->{hwpfToHbAttrMap} )
     {
-        push (@{$hwpfAttributes{attribute}}, $attribute);
+        push( @{ $hwpfAttributes{attribute} }, $attribute );
     }
 }
-
 
 #Looping variable
 my $matchFound = 0;
 
 #Loop over all of the EKB attributes and look for a duplcate in HB list
-foreach my $ekbAttr (@{$allEKBAttributes->{attribute}})
+foreach my $ekbAttr ( @{ $allEKBAttributes->{attribute} } )
 {
     my $isFuncBacked = 0;
     $matchFound = 0;
@@ -131,7 +125,7 @@ foreach my $ekbAttr (@{$allEKBAttributes->{attribute}})
     #check if this matches any in our list of func backed attrs
     foreach my $id (@funcBackedAttr)
     {
-        if ($id eq $ekbAttrId)
+        if ( $id eq $ekbAttrId )
         {
             $isFuncBacked = 1;
             last;
@@ -140,37 +134,38 @@ foreach my $ekbAttr (@{$allEKBAttributes->{attribute}})
 
     #If it is a function backed attribute , no need to add it
     #we want the function to overrule anything else.
-    if($isFuncBacked)
+    if ($isFuncBacked)
     {
         print "SKIPPING EKB $ekbAttrId - function backed\n";
         next;
     }
 
     #Loop over HB attrs until we find a match
-    foreach my $hbAttr (@{$hwpfAttributes{attribute}})
+    foreach my $hbAttr ( @{ $hwpfAttributes{attribute} } )
     {
-        my $hbFapiId  = $hbAttr->{hwpfToHbAttrMap}[0]->{id};
+        my $hbFapiId = $hbAttr->{hwpfToHbAttrMap}[0]->{id};
 
-        if($ekbAttrId eq $hbFapiId)
+        if ( $ekbAttrId eq $hbFapiId )
         {
             $matchFound = 1;
-            $theHbAttr = $hbAttr;
+            $theHbAttr  = $hbAttr;
             last;
         }
     }
 
     #if no match was found we will assume this is a new attribute and add it
-    if(!$matchFound)
+    if ( !$matchFound )
     {
-        push (@{$completeAttr{attribute}}, $ekbAttr);
+        push( @{ $completeAttr{attribute} }, $ekbAttr );
     }
+
     #otherwise we need to check what was updated and handle it accordingly
     else
     {
         #Special case big hammer will ignore the generated version and
         # always choose what HB coded up
         my $ignoreEkb = 0;
-        if( exists $theHbAttr->{ignoreEkb} )
+        if ( exists $theHbAttr->{ignoreEkb} )
         {
             $ignoreEkb;
         }
@@ -179,106 +174,117 @@ foreach my $ekbAttr (@{$allEKBAttributes->{attribute}})
         # to be more correct so just update the HB attr's description
         my $ekbDesc = $ekbAttr->{description};
         my $hbDesc  = $theHbAttr->{description};
-        if($ekbDesc ne $hbDesc)
+        if ( $ekbDesc ne $hbDesc )
         {
             $theHbAttr->{description} = $ekbDesc;
         }
 
         #if persistancy has changed we want to notify the developer so cause a fail
         my $ekbPersist = $ekbAttr->{persistancy};
-        my $hbPersist = $theHbAttr->{persistancy};
-        if($ekbPersist ne $hbPersist)
+        my $hbPersist  = $theHbAttr->{persistancy};
+        if ( $ekbPersist ne $hbPersist )
         {
-            die "ERROR Hostboot says persistancy of ".$ekbAttrId." is ".$hbPersist." and Fapi says it is ".$ekbPersist."\n";
+            die "ERROR Hostboot says persistancy of "
+                . $ekbAttrId . " is "
+                . $hbPersist
+                . " and Fapi says it is "
+                . $ekbPersist . "\n";
         }
 
         #if array dimmensions have changed we want to notify the developer so cause a fail
-        my $hbArrayDimmensions = getArrayDimmensions(%$theHbAttr);
+        my $hbArrayDimmensions  = getArrayDimmensions(%$theHbAttr);
         my $ekbArrayDimmensions = getArrayDimmensions(%$ekbAttr);
-        if($hbArrayDimmensions ne $ekbArrayDimmensions)
+        if ( $hbArrayDimmensions ne $ekbArrayDimmensions )
         {
-            die "ERROR Hostboot says array dimmensions of ".$ekbAttrId." is ".$hbArrayDimmensions." and Fapi says it is ".$ekbArrayDimmensions."\n";
+            die "ERROR Hostboot says array dimmensions of "
+                . $ekbAttrId . " is "
+                . $hbArrayDimmensions
+                . " and Fapi says it is "
+                . $ekbArrayDimmensions . "\n";
         }
 
         #if attribute type has changed we want to notify the developer so cause a fail
-        my $hbAttrType = getAttrType(%$theHbAttr);
+        my $hbAttrType  = getAttrType(%$theHbAttr);
         my $ekbAttrType = getAttrType(%$ekbAttr);
-        if($hbAttrType ne $ekbAttrType)
+        if ( $hbAttrType ne $ekbAttrType )
         {
-            die "ERROR Hostboot says type of ".$ekbAttrId." is ".$hbAttrType." and Fapi says it is ".$ekbAttrType."\n";
+            die "ERROR Hostboot says type of "
+                . $ekbAttrId . " is "
+                . $hbAttrType
+                . " and Fapi says it is "
+                . $ekbAttrType . "\n";
         }
     }
 }
 
 #also need to add all of the EKB enumerations
-foreach my $ekbEnum (@{$allEKBAttributes->{enumerationType}})
+foreach my $ekbEnum ( @{ $allEKBAttributes->{enumerationType} } )
 {
     $matchFound = 0;
     my $ekbEnumId = $ekbEnum->{id};
     my $theHbEnum;
-    #we dont want to add duplicates so check if the enumeration exists already in HB
-    foreach my $hbEnum (@{$allHBAttributes->{enumerationType}})
-    {
-        my $hbEnumId  = $hbEnum->{id};
 
-        if($ekbEnumId eq $hbEnumId)
+    #we dont want to add duplicates so check if the enumeration exists already in HB
+    foreach my $hbEnum ( @{ $allHBAttributes->{enumerationType} } )
+    {
+        my $hbEnumId = $hbEnum->{id};
+
+        if ( $ekbEnumId eq $hbEnumId )
         {
             $matchFound = 1;
-            $theHbEnum = $hbEnum;
+            $theHbEnum  = $hbEnum;
             last;
         }
     }
 
     #if not found already, then add the enum
-    if(!$matchFound)
+    if ( !$matchFound )
     {
-        push (@{$completeAttr{enumerationType}}, $ekbEnum);
+        push( @{ $completeAttr{enumerationType} }, $ekbEnum );
     }
+
     #if a copy already exists in HB then we just want to update the values and description
     else
     {
         $theHbEnum->{description} = $ekbEnum->{description};
-        $theHbEnum->{enumerator} = $ekbEnum->{enumerator};
+        $theHbEnum->{enumerator}  = $ekbEnum->{enumerator};
     }
 }
 
 #add all HB attributes to completeAttr (the hash holding output xml)
-foreach my $hbAttr (@{$allHBAttributes->{attribute}})
+foreach my $hbAttr ( @{ $allHBAttributes->{attribute} } )
 {
-    push (@{$completeAttr{attribute}}, $hbAttr);
+    push( @{ $completeAttr{attribute} }, $hbAttr );
 }
 
 #also add the HB enums to completeAttr hash
-foreach my $hbEnum (@{$allHBAttributes->{enumerationType}})
+foreach my $hbEnum ( @{ $allHBAttributes->{enumerationType} } )
 {
-    push (@{$completeAttr{enumerationType}}, $hbEnum);
+    push( @{ $completeAttr{enumerationType} }, $hbEnum );
 }
 
-
 #To make things look nicer we add a newline after each attribute or enumerationType
-my $completeXml = $xml->XMLout(\%completeAttr, RootName => 'attributes', NoAttr => 1 );
+my $completeXml = $xml->XMLout( \%completeAttr, RootName => 'attributes', NoAttr => 1 );
 my $complete_fh_temp = new File::Temp( UNLINK => 1 );
 
 print $complete_fh_temp $completeXml;
 
 seek $complete_fh_temp, 0, 0 or die "Seek $complete_fh_temp failed: $!\n";
 
-open(my $complete_fh, '>', $outFullPath) || die;
+open( my $complete_fh, '>', $outFullPath ) || die;
 
 foreach my $row (<$complete_fh_temp>)
 {
     chomp $row;
-    print $complete_fh  $row."\n";
-    if(index($row, "</enumerationType>") != -1 ||
-       index($row, "</attribute>") != -1)
+    print $complete_fh $row . "\n";
+    if (   index( $row, "</enumerationType>" ) != -1
+        || index( $row, "</attribute>" ) != -1 )
     {
         print $complete_fh "\n";
     }
 }
 
 close $complete_fh;
-
-
 
 sub display_help
 {

@@ -141,13 +141,15 @@ fi
 
 # step 4: Get the list of all the ekb attribute info file names into
 # XMLTOHB_FAPIATTR_SOURCES
-LSV_FILE="${TARGETING_XMLTOHB_PROC_REL_PATH}/reqEkbAttrsXmlFileList.lsv"
-XMLTOHB_FAPIATTR_SOURCES=$(<"$LSV_FILE")
+XML_FILE="${TARGETING_XMLTOHB_PROC_REL_PATH}/ekbFileList.xml"
 
-XMLTOHB_FAPIATTR_SOURCES=""
-while read -r line; do
-    XMLTOHB_FAPIATTR_SOURCES+="$EKB/${line} "  # or "${line}.xml", etc.
-done < "$LSV_FILE"
+XMLTOHB_FAPIATTR_SOURCES=$(xmllint --xpath "/ekbFileList/file/@id" "$XML_FILE" \
+    | sed -E 's/id="([^"]+)"/\1\n/g' \
+    | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+    | sed "s|^|$EKB/|" \
+    | tr '\n' ' ' | sed 's/ *$//')
+
+echo "Files: $XMLTOHB_FAPIATTR_SOURCES"
 
 # step 5: Merge the contents of all the ekb attribute info file into
 # XMLTOHB_FAPI_XML
@@ -259,6 +261,17 @@ echo '<attributes>' | cat - ${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES} > tempFull &&
     mv tempFull ${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}
 echo '</attributes>' | cat ${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES} - > tempFull && \
     mv tempFull ${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}
+
+"$TARGETING_XMLTOHB_REL_PATH/expandTargetTypes.pl" \
+    --fromTgtXml "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}" \
+    --filter-tgt-file "${TARGETING_XMLTOHB_PROC_REL_PATH}/$filter_target" \
+    --filter-attr-file "${TARGETING_XMLTOHB_PROC_REL_PATH}/$filter_attr" \
+    --outXml "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES_EXPANDED}" 
+
+# remove empty lines created because of filtering and removing the attributes
+#move it back to full target type file
+grep -v '^[[:space:]]*$' "$GENDIR/${XMLTOHB_FULL_TARGET_TYPES_EXPANDED}" > \
+    $GENDIR/${XMLTOHB_FULL_TARGET_TYPES}
 
 # trim leading whitespace if any
 XMLTOHB_MERGED_SOURCES="${XMLTOHB_MERGED_SOURCES#" "}"

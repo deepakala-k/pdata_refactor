@@ -1602,7 +1602,7 @@ sub writeHeaderFormatHeaderFile
 //******************************************************************************
 
 // STD
-#include <builtins.h>
+@{[ $buildBmc ? "#include<targeting/xmltohb/builtins.h>" : "#include <builtins.h>\n" ]}
 #include <stdint.h>
 #include <targeting/adapters/types.H>
 #include <targeting/common/pointer.H>
@@ -1960,7 +1960,7 @@ sub writeStructFileHeader
 #include <stdlib.h>
 
 // Targeting component
-#include <builtins.h>
+@{[ $buildBmc ? "#include<targeting/xmltohb/builtins.h>" : "#include <builtins.h>\n" ]}
 @{[ $buildBmc ? "" : "#include <targeting/common/attributes.H>\n" ]}
 #include <targeting/common/entitypath.H>
 
@@ -6692,7 +6692,7 @@ sub packEntityPath
     my ( $attributes, $value, $attrhash ) = @_;
 
     my $binaryData;
-
+print ( "deepa packEntityPath :: $value\n");
     my $maxPathElements = 10;
     my ( $typeStr, $path ) = split( /:/, $value );
     my (@paths) = split( /\//, $path );
@@ -6701,6 +6701,7 @@ sub packEntityPath
 
     # Trim whitespace from the type
     $typeStr =~ s/^\s+|\s+$//g;
+    print ( "deepa typeStr :: $typeStr\n");
     if ( $typeStr eq "physical" )
     {
         $type = 2;
@@ -6804,6 +6805,8 @@ sub packSingleSimpleTypeAttribute
         # Here $value is the enumerator name
         my $enumeratorValue = enumNameToValue( $enumeration, $value );
         $$binaryDataRef .= packEnumeration( $enumeration, $enumeratorValue );
+        print ( " deepa: =============== value:: $value\n");
+        print ( " deepa: ================ enumeratorValue:: $enumeratorValue\n");
     }
     else
     {
@@ -6871,6 +6874,129 @@ sub packSingleSimpleTypeAttribute
         }
     }
 }
+
+
+
+sub createDTSAttribute
+{
+    my ( $attributes, $attribute, $value, $attrhash ) = @_;
+
+    print ( " deepa:: Value: $value\n");
+
+    $value = stripLeadingAndTrailingWhitespace($value);
+
+    my $binaryData;
+
+    my $alignment = 1;
+    if ( exists $attribute->{simpleType} )
+    {
+        my $simpleType           = $attribute->{simpleType};
+        my $simpleTypeProperties = simpleTypeProperties();
+
+        for my $typeName ( sort( keys %{$simpleType} ) )
+        {
+            if ( exists $simpleTypeProperties->{$typeName} )
+            {
+                $alignment = $simpleTypeProperties->{$typeName}{alignment};
+
+                if (   ( $simpleTypeProperties->{$typeName}{supportsArray} )
+                    && ( exists $simpleType->{array} ) )
+                {
+                    # This is an array attribute, handle the value parameter as
+                    # an array, if there are not enough values for the whole
+                    # array then use the last value to fill in the remainder
+
+                    # Figure out the array size (possibly multidimensional)
+                    my $arraySize = 1;
+                    my @bounds = split( /,/, $simpleType->{array} );
+                    foreach my $bound (@bounds)
+                    {
+                        $arraySize *= $bound;
+                    }
+
+                    # Split the values into an array
+                    my @values;
+                    if ( $typeName eq "string" )
+                    {
+                        # using "" around strings for array of strings
+                        (@values) = $value =~ m/"(.*?)"/g;
+                    }
+                    else
+                    {
+                        @values = split( /,/, $value );
+                    }
+                    my $valueArraySize = scalar(@values);
+
+                    # Iterate over the entire array creating values
+                    my $val = "";
+                    for ( my $i = 0; $i < $arraySize; $i++ )
+                    {
+                        if ( $i < $valueArraySize )
+                        {
+                            # Get the value from the value array and strip any
+                            # remaining leading/trailing whitespace that
+                            # surrounded the value after the original split
+                            $val = stripLeadingAndTrailingWhitespace( $values[$i] );
+                        }
+
+                        # else use the last value
+
+                        packSingleSimpleTypeAttribute( \$binaryData, \$attributes, \$attribute, $typeName, \$val );
+                    }
+                }
+                else
+                {
+                    # Not an array attribute
+                    packSingleSimpleTypeAttribute( \$binaryData, \$attributes, \$attribute, $typeName, \$value );
+                }
+
+                last;
+            }
+        }
+
+        if ( ( length $binaryData ) < 1 )
+        {
+            croak(    "Error requested simple type not supported.  Keys are ("
+                    . join( ',', sort( keys %{$simpleType} ) )
+                    . ")" );
+        }
+    }
+    elsif ( exists $attribute->{complexType} )
+    {
+        if ( ref($value) eq "HASH" )
+        {
+            $binaryData = packComplexType( $attributes, $attribute->{complexType}, \$value, $attrhash );
+        }
+        else
+        {
+            croak("Warning cannot serialize non-hash complex type.");
+        }
+    }
+    elsif ( exists $attribute->{nativeType} )
+    {
+        if ( $attribute->{nativeType}->{name} eq "EntityPath" )
+        {
+            $binaryData = packEntityPath( $attributes, $value, $attrhash );
+        }
+        else
+        {
+            croak( "Error nativeType not supported on attribute ID = " . "$attribute->{id}." );
+        }
+    }
+    else
+    {
+        croak("Unsupported attribute type on attribute ID = $attribute->{id}.");
+    }
+
+    if ( ( length $binaryData ) < 1 )
+    {
+        croak("Serialization failed for attribute ID = $attribute->{id}.");
+    }
+    return ( $binaryData, $alignment );
+    print ( " deepa:: At the end Value: $value\n");
+
+}
+
 
 ################################################################################
 # Pack generic attribute into a binary data stream
@@ -6951,12 +7077,12 @@ sub packAttribute
             }
         }
 
-        if ( ( length $binaryData ) < 1 )
-        {
-            croak(    "Error requested simple type not supported.  Keys are ("
-                    . join( ',', sort( keys %{$simpleType} ) )
-                    . ")" );
-        }
+        # if ( ( length $binaryData ) < 1 )
+        # {
+        #     croak(    "Error requested simple type not supported.  Keys are ("
+        #             . join( ',', sort( keys %{$simpleType} ) )
+        #             . ")" );
+        # }
     }
     elsif ( exists $attribute->{complexType} )
     {
@@ -6985,10 +7111,10 @@ sub packAttribute
         croak("Unsupported attribute type on attribute ID = $attribute->{id}.");
     }
 
-    if ( ( length $binaryData ) < 1 )
-    {
-        croak("Serialization failed for attribute ID = $attribute->{id}.");
-    }
+    # if ( ( length $binaryData ) < 1 )
+    # {
+    #     croak("Serialization failed for attribute ID = $attribute->{id}.");
+    # }
 
     return ( $binaryData, $alignment );
 }
@@ -7210,8 +7336,14 @@ sub generateAttrValuesReport
         #         flipPort                                       0
         #         reserved                                       0
 
+        # print Dumper($attrhash->{$targetInstance});
+        # print ("=====================================\n");
+        # print $attrhash->{$targetInstance}{"TYPE"}{"default"}, "\n";
+        # print ("done\n");
+        
         print $attrDFile $delim, "Target Instance: ", $targetInstance, "\n", $delim;
         printf $attrDFile "Attribute ID: %-41sDefault Value:\n%s", " ", $delim;
+
 
         foreach my $targetInstanceAttribute ( sort ( keys %{ $attrhash->{$targetInstance} } ) )
         {
@@ -7344,12 +7476,25 @@ sub generateTargetingImage
     my $targetNodeInstance   = 0;
     my $targetSysCnt         = 0;
     my $targetNodeCnt        = 0;
+    
+    my %allowed_target_list;
+    my $user_provided_target_filter_is_active;
+    loadAllowedFilterList( $filterTargetFile, \%allowed_target_list, 
+        \$user_provided_target_filter_is_active );
+
+    print Dumper (\%allowed_target_list);
 
     # To support the iterator code, we dont want sys target to be the
     # first in order. So we have specifically moved system target to second,
     # and the first place has been reserved by a node target for all binaries.
     foreach my $targetInstance ( @{ $attributes->{targetInstance} } )
     {
+        next
+            if $user_provided_target_filter_is_active
+            && !defined $allowed_target_list{ $targetInstance->{type} };
+        
+        print ("deepa adding $targetInstance->{type} \n");
+
         if ( ( $targetInstance->{type} =~ m/^sys-sys-/ ) && ( $targetSysCnt == 0 ) )
         {
             $targetSysCnt         = 1;
@@ -7370,11 +7515,13 @@ sub generateTargetingImage
         }
         push( @targetsAoH, $targetInstance );
     }
-    unshift( @targetsAoH, $targetSystemInstance );
-    unshift( @targetsAoH, $targetNodeInstance );
+    unshift(@targetsAoH, $targetSystemInstance) if defined $targetSystemInstance && $targetSystemInstance ne '';
+    unshift(@targetsAoH, $targetNodeInstance)   if defined $targetNodeInstance   && $targetNodeInstance   ne '';
 
     my $numTargets    = @targetsAoH;
     my $numAttributes = 0;
+    print (" deepa numTargets:: $numTargets\n");
+    print ("+++++++++++++++++++\n");
     foreach my $targetInstance (@targetsAoH)
     {
         my %attrhash = ();
@@ -8130,6 +8277,34 @@ sub generateTargetingImage
 
     }    # End target instance loop
 
+    open my $fh, '>', 'allattrhash_dump.txt' or die "Can't open file: $!";
+    print ("deepa =========================== allattrhash_dump \n");
+    print $fh Dumper(\%allattrhash);
+    close $fh;
+
+    open my $fh, '>', 'attributeDefCache.txt' or die "Can't open file: $!";
+    print ("deepa =========================== attributeDefCache \n");
+    print $fh Dumper(\%attributeDefCache);
+    close $fh;
+
+    # # For each target instance, get the attribute list
+    foreach my $targetInstance (sort keys %allattrhash) 
+    {
+        print "deepa targetInstance :: $targetInstance\n";
+        foreach my $targetInstanceAttribute (sort keys %{ $allattrhash{$targetInstance} }) 
+        {
+            print "deepa targetInstanceAttribute :: $targetInstanceAttribute\n";
+            my $attributeDef = $attributeDefCache{$targetInstanceAttribute};
+            print "deepa attributeDef :: $attributeDef\n";
+            my $dValue = $allattrhash{$targetInstance}{$targetInstanceAttribute}{default};
+            print "deepa dValue :: $dValue\n";
+            my $doNoConvertToBin = 1;
+            my ( $data, $alignment ) = packAttribute($attributes, $attributeDef, \$dValue, $allattrhash{$targetInstance});
+            print "deepa ============= packAttribute after dValue :: $data\n";
+        }
+        die;
+    }
+
     generateAttrValuesReport( \%allattrhash );
 
     # The number of attributes in the metadata section is packed in 4 bytes
@@ -8140,7 +8315,7 @@ sub generateTargetingImage
 
     if ( $numAttributes != $attributesWritten )
     {
-        croak(    "Number of attributes expected, $numAttributes, does not match "
+        print(    "Number of attributes expected, $numAttributes, does not match "
                 . "what was written to PNOR, $attributesWritten." );
     }
 

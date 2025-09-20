@@ -12,29 +12,8 @@ sub initVerbose
 #                                                                  #
 ####################################################################
 
-sub loadAllowedFilterList
-{
-    my ( $filter_file, $allowed_list_ref, $filter_is_active_ref ) = @_;
-
-    if ($filter_file)
-    {
-        open my $fh, '<', $filter_file or die "Cannot open $filter_file: $!";
-        while ( my $line = <$fh> )
-        {
-            chomp $line;
-            next if $line =~ /^\s*#/;    # skip comment lines
-            next if $line eq '';         # skip empty lines
-            $allowed_list_ref->{$line} = 1;
-        }
-        close $fh;
-    }
-
-    # set the scalar behind the reference
-    $$filter_is_active_ref = scalar( keys %$allowed_list_ref ) > 0;
-}
-
-sub loadAllowedListFromXML {
-    my ($xmlFile, $allowedAttrList, $pathToLook) = @_;
+sub loadAllowedFilterList {
+    my ($xmlFile, $allowedAttrList, $pathToLook, $filterIsActive) = @_;
 
     my $parser = XML::LibXML->new();
     my $doc    = $parser->parse_file($xmlFile);
@@ -45,6 +24,7 @@ sub loadAllowedListFromXML {
             $allowedAttrList->{$id} = 1;
         }
     }
+    $$filterIsActive = scalar( keys %$allowedAttrList ) > 0;
 }
 
 sub getRequiredTgtsPdbgCompPropMapList1
@@ -82,9 +62,6 @@ sub getRequiredTgtsPdbgCompPropMapList {
     foreach my $mapNode ($doc->findnodes('/targetNameMapping/mapping')) {
         my $mrwTargetType = $mapNode->findvalue('mrwTargetType');
         my $pdbgCompatibleProperty = $mapNode->findvalue('pdbgCompatibleProperty');
-
-        print ( " deepa mrwTargetType :: $mrwTargetType\n");
-        print ( " deepa pdbgCompatibleProperty :: $pdbgCompatibleProperty\n");
 
         if ($mrwTargetType ne "" && $pdbgCompatibleProperty ne "") {
             $reqPdbgMapList{$mrwTargetType} = $pdbgCompatibleProperty;

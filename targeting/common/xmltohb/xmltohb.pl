@@ -83,6 +83,7 @@ my $cfgAddVersionPage        = 0;
 my $nonSyncAttribFile        = "";
 my $filterAttrFile           = "";
 my $filterTargetFile         = "";
+my $generateDTS              = 1;
 
 my $cfgBiosXmlFile    = undef;
 my $cfgBiosSchemaFile = undef;
@@ -90,6 +91,10 @@ my $cfgBiosOutputFile = undef;
 
 my $MAX_4_BYTE_VALUE = 0xFFFFFFFF;
 my $buildBmc         = 0;
+
+
+my %allowed_attr_list;
+my $user_provided_attr_filter_is_active;
 
 GetOptions(
     "hb-xml-file:s"              => \$cfgHbXmlFile,
@@ -112,7 +117,8 @@ GetOptions(
     "build-bmc!"                 => \$buildBmc,
     "help"                       => \$cfgHelp,
     "man"                        => \$cfgMan,
-    "verbose"                    => \$cfgVerbose
+    "verbose"                    => \$cfgVerbose,
+    "generateDTS"                => \$generateDTS
 ) || pod2usage( -verbose => 0 );
 
 pod2usage( -verbose => 1 ) if $cfgHelp;
@@ -146,6 +152,14 @@ if ($cfgVerbose)
     print STDOUT "Non Sync Attributes file = $nonSyncAttribFile\n";
     print STDOUT "filter-attr-file = $filterAttrFile\n";
     print STDOUT "filter-target-file = $filterTargetFile\n";
+}
+
+if($filterAttrFile)
+{
+    loadAllowedFilterList( $filterAttrFile, 
+    \%allowed_attr_list,
+    "/allowedAttributes/attribute",
+    \$user_provided_attr_filter_is_active );
 }
 
 ################################################################################
@@ -271,11 +285,7 @@ my %virtualAttrIds = ();
 # present in the set.Filter it before doing any operations.
 # $allAttributes to contain the actual list
 
-# TODO, need to check if $allAttributes also needs to be filtered??
-if ( $filterAttrFile ne "" )
-{
-    $attributes = filterAttributes( $attributes, $filterAttrFile );
-}
+$attributes = filterAttributes( $attributes, $filterAttrFile );
 
 for my $attr ( reverse 0 .. ( ( scalar @{ $attributes->{attribute} } ) - 1 ) )
 {
@@ -2755,8 +2765,7 @@ sub writeAttrIdNameMap
 
         # Simple or complex types
         if (   ( exists $attribute->{simpleType} )
-            || ( exists $attribute->{complexType} )
-            || ( exists $attribute->{nativeType} ) )
+            || ( exists $attribute->{complexType} ) )
         {
             # This loops through all attributes to add id and name
             # not just enumerated attributes
@@ -5290,6 +5299,7 @@ sub getAttributeIdEnumeration
 
     foreach my $attribute ( @{ $attributes->{attribute} } )
     {
+        my $ID = $attribute->{id};
         my $attributeHexVal28bit = getAttributeIdHashStr( $attribute->{id} );
 
         # check if this Id has already been processed
@@ -5476,6 +5486,49 @@ sub packString
     return pack( "Z$sizeInclNull", $value );
 }
 
+use Scalar::Util qw(reftype blessed);
+use Data::Dumper;
+
+sub packChummaString {
+    my ($val) = @_;
+
+    return "undef" unless defined $val;
+
+    # If not a reference
+    unless (ref $val) {
+        # If it looks like binary, dump as hex
+        if ($val =~ /[^\x20-\x7E]/) {
+            return "[binary:" . unpack("H*", $val) . "]";
+        }
+        return $val;
+    }
+
+    # If it's an object
+    if (blessed($val)) {
+        return "$val";  # Will use overload if available
+    }
+
+    # If it's a reference
+    my $type = reftype($val);
+
+    if ($type eq 'ARRAY') {
+        return "[" . join(", ", map { to_string($_) } @$val) . "]";
+    }
+    elsif ($type eq 'HASH') {
+        return "{" . join(", ", map { "$_ => " . to_string($val->{$_}) } sort keys %$val) . "}";
+    }
+    elsif ($type eq 'SCALAR' || $type eq 'REF') {
+        return "\\" . to_string($$val);
+    }
+    elsif ($type eq 'CODE') {
+        return "sub { ... }";
+    }
+    else {
+        local $Data::Dumper::Terse  = 1;
+        local $Data::Dumper::Indent = 0;
+        return Dumper($val);
+    }
+}
 ################################################################################
 # Get space required to store an enum, based on the max value
 ################################################################################
@@ -5796,7 +5849,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => "C"
+        packfmt            => $generateDTS ? \&packChummaString : "C",
     };
     $typesHoH{"int16_t"} = {
         supportsArray      => 1,
@@ -5808,7 +5861,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => \&pack2byte
+        packfmt            => $generateDTS ? \&packChummaString : \&pack2byte,
     };
     $typesHoH{"int32_t"} = {
         supportsArray      => 1,
@@ -5820,7 +5873,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => \&pack4byte
+        packfmt            => $generateDTS ? \&packChummaString : \&pack4byte,
     };
     $typesHoH{"int64_t"} = {
         supportsArray      => 1,
@@ -5832,7 +5885,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => \&pack8byte
+        packfmt            => $generateDTS ? \&packChummaString : \&pack8byte,
     };
     $typesHoH{"uint8_t"} = {
         supportsArray      => 1,
@@ -5844,7 +5897,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => "C"
+        packfmt            =>  $generateDTS ? \&packChummaString : "C",
     };
     $typesHoH{"uint16_t"} = {
         supportsArray      => 1,
@@ -5856,7 +5909,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => \&pack2byte
+        packfmt            =>  $generateDTS ? \&packChummaString : \&pack2byte
     };
     $typesHoH{"uint32_t"} = {
         supportsArray      => 1,
@@ -5868,7 +5921,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => \&pack4byte
+        packfmt            => $generateDTS ? \&packChummaString : \&pack4byte
     };
     $typesHoH{"uint64_t"} = {
         supportsArray      => 1,
@@ -5880,7 +5933,7 @@ sub simpleTypeProperties
         default            => \&defaultZero,
         alignment          => 1,
         specialPolicies    => \&null,
-        packfmt            => \&pack8byte
+        packfmt            => $generateDTS ? \&packChummaString : \&pack8byte
     };
     $typesHoH{"enumeration"} = {
         supportsArray      => 1,
@@ -6164,25 +6217,19 @@ sub mergeComplexAttributeFields
     return $mergedFields;
 }
 
-sub loadAllowedFilterList
-{
-    my ( $filter_file, $allowed_list_ref, $filter_is_active_ref ) = @_;
+sub loadAllowedFilterList {
+    my ($xmlFile, $allowedList, $pathToLook, $filter_is_active_ref) = @_;
 
-    if ($filter_file)
-    {
-        open my $fh, '<', $filter_file or die "Cannot open $filter_file: $!";
-        while ( my $line = <$fh> )
-        {
-            chomp $line;
-            next if $line =~ /^\s*#/;    # skip comment lines
-            next if $line eq '';         # skip empty lines
-            $allowed_list_ref->{$line} = 1;
+    my $parser = XML::LibXML->new();
+    my $doc    = $parser->parse_file($xmlFile);
+
+    foreach my $attrNode ($doc->findnodes($pathToLook)) {
+        my $id = $attrNode->findvalue('@id');
+        if ($id ne "") {
+            $allowedList->{$id} = 1;
         }
-        close $fh;
     }
-
-    # set the scalar behind the reference
-    $$filter_is_active_ref = scalar( keys %$allowed_list_ref ) > 0;
+    $$filter_is_active_ref = scalar( keys %$allowedList ) > 0;
 }
 
 ################################################################################
@@ -6223,11 +6270,6 @@ sub loadAllowedFilterList
 sub getTargetAttributes
 {
     my ( $type, $attributes, $attrhasha ) = @_;
-
-    my %allowed_attr_list;
-    my $user_provided_attr_filter_is_active;
-
-    loadAllowedFilterList( $filterAttrFile, \%allowed_attr_list, \$user_provided_attr_filter_is_active );
 
     foreach my $targetType ( @{ $attributes->{targetType} } )
     {
@@ -6692,7 +6734,15 @@ sub packEntityPath
     my ( $attributes, $value, $attrhash ) = @_;
 
     my $binaryData;
-print ( "deepa packEntityPath :: $value\n");
+
+#hack that must be fixed
+if($value eq "MustBeOverriddenByTargetInstance")
+{
+    $binaryData = "0";
+    return $binaryData;
+}
+
+
     my $maxPathElements = 10;
     my ( $typeStr, $path ) = split( /:/, $value );
     my (@paths) = split( /\//, $path );
@@ -6701,7 +6751,6 @@ print ( "deepa packEntityPath :: $value\n");
 
     # Trim whitespace from the type
     $typeStr =~ s/^\s+|\s+$//g;
-    print ( "deepa typeStr :: $typeStr\n");
     if ( $typeStr eq "physical" )
     {
         $type = 2;
@@ -6804,9 +6853,8 @@ sub packSingleSimpleTypeAttribute
         #}
         # Here $value is the enumerator name
         my $enumeratorValue = enumNameToValue( $enumeration, $value );
-        $$binaryDataRef .= packEnumeration( $enumeration, $enumeratorValue );
-        print ( " deepa: =============== value:: $value\n");
-        print ( " deepa: ================ enumeratorValue:: $enumeratorValue\n");
+        #$$binaryDataRef .= packEnumeration( $enumeration, $enumeratorValue );
+        $$binaryDataRef .= packChummaString($enumeratorValue );
     }
     else
     {
@@ -6877,161 +6925,40 @@ sub packSingleSimpleTypeAttribute
 
 
 
-sub createDTSAttribute
-{
-    my ( $attributes, $attribute, $value, $attrhash ) = @_;
-
-    print ( " deepa:: Value: $value\n");
-
-    $value = stripLeadingAndTrailingWhitespace($value);
-
-    my $binaryData;
-
-    my $alignment = 1;
-    if ( exists $attribute->{simpleType} )
-    {
-        my $simpleType           = $attribute->{simpleType};
-        my $simpleTypeProperties = simpleTypeProperties();
-
-        for my $typeName ( sort( keys %{$simpleType} ) )
-        {
-            if ( exists $simpleTypeProperties->{$typeName} )
-            {
-                $alignment = $simpleTypeProperties->{$typeName}{alignment};
-
-                if (   ( $simpleTypeProperties->{$typeName}{supportsArray} )
-                    && ( exists $simpleType->{array} ) )
-                {
-                    # This is an array attribute, handle the value parameter as
-                    # an array, if there are not enough values for the whole
-                    # array then use the last value to fill in the remainder
-
-                    # Figure out the array size (possibly multidimensional)
-                    my $arraySize = 1;
-                    my @bounds = split( /,/, $simpleType->{array} );
-                    foreach my $bound (@bounds)
-                    {
-                        $arraySize *= $bound;
-                    }
-
-                    # Split the values into an array
-                    my @values;
-                    if ( $typeName eq "string" )
-                    {
-                        # using "" around strings for array of strings
-                        (@values) = $value =~ m/"(.*?)"/g;
-                    }
-                    else
-                    {
-                        @values = split( /,/, $value );
-                    }
-                    my $valueArraySize = scalar(@values);
-
-                    # Iterate over the entire array creating values
-                    my $val = "";
-                    for ( my $i = 0; $i < $arraySize; $i++ )
-                    {
-                        if ( $i < $valueArraySize )
-                        {
-                            # Get the value from the value array and strip any
-                            # remaining leading/trailing whitespace that
-                            # surrounded the value after the original split
-                            $val = stripLeadingAndTrailingWhitespace( $values[$i] );
-                        }
-
-                        # else use the last value
-
-                        packSingleSimpleTypeAttribute( \$binaryData, \$attributes, \$attribute, $typeName, \$val );
-                    }
-                }
-                else
-                {
-                    # Not an array attribute
-                    packSingleSimpleTypeAttribute( \$binaryData, \$attributes, \$attribute, $typeName, \$value );
-                }
-
-                last;
-            }
-        }
-
-        if ( ( length $binaryData ) < 1 )
-        {
-            croak(    "Error requested simple type not supported.  Keys are ("
-                    . join( ',', sort( keys %{$simpleType} ) )
-                    . ")" );
-        }
-    }
-    elsif ( exists $attribute->{complexType} )
-    {
-        if ( ref($value) eq "HASH" )
-        {
-            $binaryData = packComplexType( $attributes, $attribute->{complexType}, \$value, $attrhash );
-        }
-        else
-        {
-            croak("Warning cannot serialize non-hash complex type.");
-        }
-    }
-    elsif ( exists $attribute->{nativeType} )
-    {
-        if ( $attribute->{nativeType}->{name} eq "EntityPath" )
-        {
-            $binaryData = packEntityPath( $attributes, $value, $attrhash );
-        }
-        else
-        {
-            croak( "Error nativeType not supported on attribute ID = " . "$attribute->{id}." );
-        }
-    }
-    else
-    {
-        croak("Unsupported attribute type on attribute ID = $attribute->{id}.");
-    }
-
-    if ( ( length $binaryData ) < 1 )
-    {
-        croak("Serialization failed for attribute ID = $attribute->{id}.");
-    }
-    return ( $binaryData, $alignment );
-    print ( " deepa:: At the end Value: $value\n");
-
-}
-
-
 ################################################################################
 # Pack generic attribute into a binary data stream
 ################################################################################
 
-sub packAttribute
-{
-    my ( $attributes, $attribute, $value, $attrhash ) = @_;
+sub packAttribute {
+    my($attributes,$attribute,$value,$attrhash) = @_;
 
     $value = stripLeadingAndTrailingWhitespace($value);
 
     my $binaryData;
 
     my $alignment = 1;
-    if ( exists $attribute->{simpleType} )
+    if(exists $attribute->{simpleType})
     {
-        my $simpleType           = $attribute->{simpleType};
+        my $simpleType = $attribute->{simpleType};
         my $simpleTypeProperties = simpleTypeProperties();
 
-        for my $typeName ( sort( keys %{$simpleType} ) )
+        for my $typeName (sort(keys %{$simpleType}))
         {
-            if ( exists $simpleTypeProperties->{$typeName} )
+            if(exists $simpleTypeProperties->{$typeName})
             {
                 $alignment = $simpleTypeProperties->{$typeName}{alignment};
 
-                if (   ( $simpleTypeProperties->{$typeName}{supportsArray} )
-                    && ( exists $simpleType->{array} ) )
+                if (($simpleTypeProperties->{$typeName}{supportsArray}) &&
+                    (exists $simpleType->{array}))
                 {
                     # This is an array attribute, handle the value parameter as
                     # an array, if there are not enough values for the whole
                     # array then use the last value to fill in the remainder
 
+
                     # Figure out the array size (possibly multidimensional)
                     my $arraySize = 1;
-                    my @bounds = split( /,/, $simpleType->{array} );
+                    my @bounds = split(/,/,$simpleType->{array});
                     foreach my $bound (@bounds)
                     {
                         $arraySize *= $bound;
@@ -7039,71 +6966,75 @@ sub packAttribute
 
                     # Split the values into an array
                     my @values;
-                    if ( $typeName eq "string" )
+                    if ($typeName eq "string")
                     {
                         # using "" around strings for array of strings
                         (@values) = $value =~ m/"(.*?)"/g;
                     }
                     else
                     {
-                        @values = split( /,/, $value );
+                        @values = split(/,/,$value);
                     }
                     my $valueArraySize = scalar(@values);
 
                     # Iterate over the entire array creating values
                     my $val = "";
-                    for ( my $i = 0; $i < $arraySize; $i++ )
+                    for (my $i = 0; $i < $arraySize; $i++)
                     {
-                        if ( $i < $valueArraySize )
+                        if ($i < $valueArraySize)
                         {
                             # Get the value from the value array and strip any
                             # remaining leading/trailing whitespace that
                             # surrounded the value after the original split
-                            $val = stripLeadingAndTrailingWhitespace( $values[$i] );
+                            $val = stripLeadingAndTrailingWhitespace($values[$i]);
                         }
-
                         # else use the last value
 
-                        packSingleSimpleTypeAttribute( \$binaryData, \$attributes, \$attribute, $typeName, $val );
+                        packSingleSimpleTypeAttribute(\$binaryData,
+                            \$attributes, \$attribute, $typeName, $val);
                     }
                 }
                 else
                 {
                     # Not an array attribute
-                    packSingleSimpleTypeAttribute( \$binaryData, \$attributes, \$attribute, $typeName, $value );
+                    packSingleSimpleTypeAttribute(\$binaryData,
+                        \$attributes, \$attribute,$typeName, $value);
                 }
 
                 last;
             }
         }
 
-        # if ( ( length $binaryData ) < 1 )
-        # {
-        #     croak(    "Error requested simple type not supported.  Keys are ("
-        #             . join( ',', sort( keys %{$simpleType} ) )
-        #             . ")" );
-        # }
-    }
-    elsif ( exists $attribute->{complexType} )
-    {
-        if ( ref($value) eq "HASH" )
+        if( (length $binaryData) < 1)
         {
-            $binaryData = packComplexType( $attributes, $attribute->{complexType}, $value, $attrhash );
+            croak("Error requested simple type not supported.  Keys are ("
+                . join(',',sort(keys %{$simpleType})) . ")");
+        }
+    }
+    elsif(exists $attribute->{complexType})
+    {
+        if(ref ($value) eq "HASH" )
+        {
+            $binaryData = packComplexType($attributes,
+                                          $attribute->{complexType},
+                                          $value,
+                                          $attrhash);
         }
         else
         {
             croak("Warning cannot serialize non-hash complex type.");
         }
     }
-    elsif ( exists $attribute->{nativeType} )
+    elsif(exists $attribute->{nativeType})
     {
-        if ( $attribute->{nativeType}->{name} eq "EntityPath" )
+        if($attribute->{nativeType}->{name} eq "EntityPath")
         {
-            $binaryData = packEntityPath( $attributes, $value, $attrhash );
+            $binaryData = packEntityPath($attributes,$value,$attrhash);
         }
         else
         {
-            croak( "Error nativeType not supported on attribute ID = " . "$attribute->{id}." );
+            croak("Error nativeType not supported on attribute ID = "
+                . "$attribute->{id}.");
         }
     }
     else
@@ -7111,12 +7042,12 @@ sub packAttribute
         croak("Unsupported attribute type on attribute ID = $attribute->{id}.");
     }
 
-    # if ( ( length $binaryData ) < 1 )
-    # {
-    #     croak("Serialization failed for attribute ID = $attribute->{id}.");
-    # }
+    if( (length $binaryData) < 1)
+    {
+        croak("Serialization failed for attribute ID = $attribute->{id}.");
+    }
 
-    return ( $binaryData, $alignment );
+    return ($binaryData,$alignment);
 }
 
 ################################################################################
@@ -7305,15 +7236,111 @@ sub serializeAssociations
     ASSOC_EXIT();
 }
 
+
+my %dts_tree;
+
+sub encode_path {
+    my ($tree, $path) = @_;
+    my $binary = '';
+
+    my @parts = split '/', $path;
+    my $curr  = $tree;
+
+    foreach my $part (@parts) {
+        my ($name, $idx) = $part =~ /^([^-]+)-(\d+)$/;
+        die "Bad part: $part" unless defined $name && defined $idx;
+
+        # descend into node
+        $curr = $curr->{$part}
+          or die "No such node $part in tree";
+
+        # lookup ATTR_TYPE
+        my $type = $curr->{TYPE}
+          or die "Missing ATTR_TYPE for $part";
+
+        # append type/index to binary
+        $binary .= pack("CC", $type, $idx);
+    }
+
+    return $binary;
+}
+
+sub add_to_dts_tree {
+    my ($tree, $phys_path, $attrs) = @_;
+
+    # strip leading "physical:"
+    $phys_path =~ s/^[^:]+://;
+
+    my @nodes = grep { $_ ne '' } split('/', $phys_path);
+    my $curr = $tree;
+
+    for my $i (0 .. $#nodes) {
+        my $node = $nodes[$i];
+
+        $curr->{$node} //= {};
+
+        # store current node type value if present in attrs
+        if (exists $attrs->{TYPE}) {
+            $curr->{$node}->{TYPE} = $attrs->{TYPE};
+        }
+
+        if ($i == $#nodes) {
+            # leaf node → merge attributes
+            $curr->{$node} = { %{ $curr->{$node} }, %$attrs };
+
+            # optionally, encode binary path now
+            if (exists $curr->{$node}->{TYPE}) {
+                # TODO
+                # my $bin_path = encode_path($tree, $phys_path);
+                # $curr->{$node}->{BINARY_PATH} = $bin_path;
+            }
+        } else {
+            # intermediate → descend
+            $curr = $curr->{$node};
+        }
+    }
+}
+
+
+sub emit_dts {
+    my ($fh, $tree, $indent) = @_;
+    $indent //= 0;
+
+    foreach my $node (sort keys %$tree) {
+        print $fh ("    " x $indent, "$node {\n");
+
+        my %attrs;
+        my %children;
+
+        # split attributes vs children
+        foreach my $k (keys %{ $tree->{$node} }) {
+            if (ref $tree->{$node}{$k}) {
+                $children{$k} = $tree->{$node}{$k};
+            } else {
+                $attrs{$k} = $tree->{$node}{$k};
+            }
+        }
+
+        # attributes
+        foreach my $attr (sort keys %attrs) 
+        {
+            my $print_attr = ($attr eq "compatible") ? $attr : "ATTR_$attr";
+            print $fh ("    " x ($indent+1), "$print_attr = \"$attrs{$attr}\";\n");
+        }
+
+        # children
+        emit_dts($fh, \%children, $indent+1);
+
+        print $fh ("    " x $indent, "};\n");
+    }
+}
+
 ################################################################################
 # Write the Attribute Default Values Report
 ################################################################################
 sub generateAttrValuesReport
 {
-    my ($attrhash) = @_;
-
-    open( ATTR_DEFAULT_FILE_IMAGE, ">$cfgImgOutputDir" . "attrDefaultsReport.txt" )
-        or croak( "Attribute default file: >$cfgImgOutputDir" . "attrDefaultsReport.txt could not be opened." );
+    my ($attrhash, $attributes, $attributeDefCache) = @_;
     my $attrDFile = *ATTR_DEFAULT_FILE_IMAGE;
 
     my $delim = "----------------------------------------------------------------------------------\n";
@@ -7343,10 +7370,15 @@ sub generateAttrValuesReport
         
         print $attrDFile $delim, "Target Instance: ", $targetInstance, "\n", $delim;
         printf $attrDFile "Attribute ID: %-41sDefault Value:\n%s", " ", $delim;
-
+        
+        my $phys_path;
+        my %attrs;
 
         foreach my $targetInstanceAttribute ( sort ( keys %{ $attrhash->{$targetInstance} } ) )
         {
+            my $attributeDef = $attributeDefCache->{$targetInstanceAttribute};
+            my $id = $attrhash->{$targetInstance}->{$targetInstanceAttribute}->{id};
+
             my $dValue = $attrhash->{$targetInstance}->{$targetInstanceAttribute}->{default};
             if ( ref($dValue) eq "HASH" )    #If default is HASH, attr is complex type.
             {
@@ -7361,12 +7393,50 @@ sub generateAttrValuesReport
             else
             {
                 $dValue =~ s/^\s+|\s+$//g;
-                printf $attrDFile "%-55s", $attrhash->{$targetInstance}->{$targetInstanceAttribute}->{id};
+                printf $attrDFile "%-55s", $id;
                 print $attrDFile $dValue, "\n";
+
+                if ($id eq "AFFINITY_PATH") {
+                    $phys_path = $attrhash->{$targetInstance}{$targetInstanceAttribute}{default};
+                    $phys_path =~ s/^affinity://;
+                    print "deepa::::::::::::::::::::::: $phys_path\n";
+                }
+
+                if ($id ne "compatible")
+                {
+                    my ( $data, $alignment ) = 
+                    packAttribute( 
+                        $attributes, 
+                        $attributeDef, 
+                        $attrhash->{$targetInstance}{$targetInstanceAttribute}{default}, 
+                        $attrhash->{$targetInstance} );
+                    
+
+                    if (defined $id && $id ne '') {
+                        $attrs{$id} = $data;
+                    }
+                }
+                else
+                {
+                    if (defined $id && $id ne '') {
+                        $attrs{$id} = $attrhash->{$targetInstance}{$targetInstanceAttribute}{default};
+                    }
+                }
+
             }
         }
+        if ($phys_path) 
+        {
+            add_to_dts_tree(\%dts_tree, $phys_path, \%attrs);
+        }
     }
+
     close $attrDFile;
+
+    print "000000000000000000000000000000000000000000000000\n";
+    open my $dtsFile, '>', 'chummaDTS.dts' or die "Can't open file: $!";
+    emit_dts($dtsFile, \%dts_tree);
+    close $dtsFile;
 }
 
 ################################################################################
@@ -7479,10 +7549,10 @@ sub generateTargetingImage
     
     my %allowed_target_list;
     my $user_provided_target_filter_is_active;
-    loadAllowedFilterList( $filterTargetFile, \%allowed_target_list, 
-        \$user_provided_target_filter_is_active );
-
-    print Dumper (\%allowed_target_list);
+      loadAllowedFilterList( $filterTargetFile,
+    \%allowed_target_list,
+    "/allowedTargets/targetType",
+    \$user_provided_target_filter_is_active);
 
     # To support the iterator code, we dont want sys target to be the
     # first in order. So we have specifically moved system target to second,
@@ -7515,18 +7585,26 @@ sub generateTargetingImage
         }
         push( @targetsAoH, $targetInstance );
     }
-    unshift(@targetsAoH, $targetSystemInstance) if defined $targetSystemInstance && $targetSystemInstance ne '';
-    unshift(@targetsAoH, $targetNodeInstance)   if defined $targetNodeInstance   && $targetNodeInstance   ne '';
-
+    print "deepa System\n";
+    print Dumper $targetSystemInstance;
+    print "deepa targetSysCnt :: $targetSysCnt\n";
+    print "deepa Node\n";
+    print Dumper $targetNodeInstance;
+    unshift(@targetsAoH, $targetSystemInstance) if $targetSysCnt == 1;
+    unshift(@targetsAoH, $targetNodeInstance)   if $targetNodeCnt == 1;
     my $numTargets    = @targetsAoH;
     my $numAttributes = 0;
     print (" deepa numTargets:: $numTargets\n");
     print ("+++++++++++++++++++\n");
+    
     foreach my $targetInstance (@targetsAoH)
     {
         my %attrhash = ();
-        getTargetAttributes( $targetInstance->{type}, $attributes, \%attrhash );
-        $numAttributes += keys %attrhash;
+        if (defined $targetInstance->{type})
+        {
+            getTargetAttributes( $targetInstance->{type}, $attributes, \%attrhash );
+            $numAttributes += keys %attrhash;
+        }
     }
 
     # Reserve # pointers * sizeof(pointer)
@@ -7725,6 +7803,7 @@ sub generateTargetingImage
     my %attrMetadataMap = ();
 
     my %allattrhash;    #Hash used to generate attribute report
+    my %dtsAllattrhash;
     foreach my $targetInstance (@targetsAoH)
     {
         #print STDOUT "Target=$targetInstance->{id}\n";
@@ -8274,38 +8353,22 @@ sub generateTargetingImage
 
         #Add attribute list for current Target Instance
         $allattrhash{ $targetInstance->{id} } = \%attrhash;
+        # clone attrhash for dts-specific storage
+        my $dtsAttrhash = dclone(\%attrhash);
 
-    }    # End target instance loop
+        $dtsAttrhash->{compatible} = {
+            id      => 'compatible',
+            default => $targetInstance->{type},
+        };
+        $dtsAllattrhash{$targetInstance->{id}} = $dtsAttrhash;
 
-    open my $fh, '>', 'allattrhash_dump.txt' or die "Can't open file: $!";
-    print ("deepa =========================== allattrhash_dump \n");
-    print $fh Dumper(\%allattrhash);
-    close $fh;
+    }    # End target instance loop2
 
-    open my $fh, '>', 'attributeDefCache.txt' or die "Can't open file: $!";
-    print ("deepa =========================== attributeDefCache \n");
-    print $fh Dumper(\%attributeDefCache);
-    close $fh;
+    open my $testing, '>', 'testing.txt' or die "Can't open file: $!";
+    printf $testing Dumper \%dtsAllattrhash;
+    close $testing;
 
-    # # For each target instance, get the attribute list
-    foreach my $targetInstance (sort keys %allattrhash) 
-    {
-        print "deepa targetInstance :: $targetInstance\n";
-        foreach my $targetInstanceAttribute (sort keys %{ $allattrhash{$targetInstance} }) 
-        {
-            print "deepa targetInstanceAttribute :: $targetInstanceAttribute\n";
-            my $attributeDef = $attributeDefCache{$targetInstanceAttribute};
-            print "deepa attributeDef :: $attributeDef\n";
-            my $dValue = $allattrhash{$targetInstance}{$targetInstanceAttribute}{default};
-            print "deepa dValue :: $dValue\n";
-            my $doNoConvertToBin = 1;
-            my ( $data, $alignment ) = packAttribute($attributes, $attributeDef, \$dValue, $allattrhash{$targetInstance});
-            print "deepa ============= packAttribute after dValue :: $data\n";
-        }
-        die;
-    }
-
-    generateAttrValuesReport( \%allattrhash );
+    generateAttrValuesReport( \%dtsAllattrhash , $attributes, \%attributeDefCache);
 
     # The number of attributes in the metadata section is packed in 4 bytes
     # (uint32_t). Include that size in the total size of the metadata section.
@@ -8748,26 +8811,22 @@ sub generateXMLforSM
 
 sub filterAttributes
 {
-    my ( $attr_hash, $lsv_file ) = @_;
+    my ( $attr_hash, $filterAttrFile ) = @_;
 
     # Read allowed IDs from .lsv into a hash
     my %allowed;
-    open my $fh, '<', $lsv_file or die "Cannot open $lsv_file: $!";
-    while ( my $line = <$fh> )
-    {
-        chomp $line;
-        next if $line =~ /^\s*#/;    # skip comment lines
-        next if $line eq '';         # skip empty lines
-        $allowed{$line} = 1;
-    }
-    close $fh;
+    my $filter_active;
 
-    # Filter the 'attribute' array in-place
-    if ( exists $attr_hash->{attribute} && ref $attr_hash->{attribute} eq 'ARRAY' )
-    {
-        my @filtered = grep { exists $_->{id} && $allowed{ $_->{id} } } @{ $attr_hash->{attribute} };
+    loadAllowedFilterList( $filterAttrFile, 
+        \%allowed,
+        "/allowedAttributes/attribute",
+        \$filter_active );
 
-        $attr_hash->{attribute} = \@filtered;
+    if ($filter_active && ref $attr_hash->{attribute} eq 'ARRAY') {
+        $attr_hash->{attribute} = [
+            grep { exists $_->{id} && $allowed{ $_->{id} } }
+                 @{ $attr_hash->{attribute} }
+        ];
     }
 
     # Return filtered hashref

@@ -2,7 +2,7 @@
 <attributes>
   <targetTypeExtension>
     <attribute>
-      <id>PHYS_DEV_PATH</id>
+      <id>AFFINITY_BIN_PATH</id>
     </attribute>
     <attribute>
       <id>PHYS_BIN_PATH</id>

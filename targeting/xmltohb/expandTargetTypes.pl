@@ -129,9 +129,18 @@ sub init
     initVerbose($myVerbose);
     $fromXMLData = XML::LibXML->load_xml(location => $fromXMLFile);
 
-    loadAllowedFilterList( $filterTgtsFile, \%reqTgts, \$user_provided_tgt_filter_is_active );
+    loadAllowedFilterList( $filterTgtsFile, 
+        \%reqTgts,
+        "/allowedTargets/targetType",
+        \$user_provided_tgt_filter_is_active );
 
-    loadAllowedFilterList( $filterAttrFile, \%reqAttr, \$user_provided_attr_filter_is_active );
+    print ("Deepa: user_provided_tgt_filter_is_active :: $user_provided_tgt_filter_is_active\n");
+
+    loadAllowedFilterList( $filterAttrFile, 
+        \%reqAttr,
+        "/allowedAttributes/attribute",
+        \$user_provided_attr_filter_is_active );
+    print ("Deepa: user_provided_attr_filter_is_active :: $user_provided_attr_filter_is_active\n");
 }
 
 sub isVerboseReq
@@ -143,7 +152,7 @@ sub isVerboseReq
     {
         $isReq = 1;
     }
-
+    $isReq = 0;
     return ( $isReq )
 }
 

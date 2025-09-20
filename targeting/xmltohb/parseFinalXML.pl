@@ -12,11 +12,7 @@ use File::Basename;
 my $currDir = dirname($0);
 require "$currDir/utils.pl";
 
-my $verbose = "NA";
-sub initVerbose
-{
-    $verbose = $_[0];
-}
+my $verbose = "";
 
 # Preparing structure type for MRW attribute definition
 # This can used for ekb xml if ekb xml converted into MRW format
@@ -56,18 +52,6 @@ struct SimpleType => {
 
 struct AttributeDefinition => {
     datatype                    => '$',
-    global                      => '$',
-    hasStringConversion         => '$',
-    hbOnly                      => '$',
-    hwpfToAttrMap               => '@',
-    ignoreEkb                   => '$',
-    mrwRequired                 => '$',
-    no_export                   => '$',
-    persistency                 => '$',
-    range                       => '@',
-    readable                    => '$',
-    virtual                     => '$',
-    writeable                   => '$',
     nativeType                  => 'NativeType',
     simpleType                  => 'SimpleType',
     complexType                 => 'ComplexType',
@@ -82,45 +66,43 @@ sub isVerboseReq
     {
         $isReq = 1;
     }
-
     return ( $isReq )
 }
 
-sub getAttrsDef
-{
-    my $inXMLFile = $_[0];
-    my $filterFile = $_[1];
+sub getAttrsDef {
+    my ($inXMLFile, $filterFile) = @_;
 
     my %attributeDefList;
-
     my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
 
-    if ( $filterFile ne "" )
-    {
+    my @attrNodes;
+
+    if ($filterFile) {
         my %reqAttrsList = getReqAllAttrsFilterList($filterFile);
-        foreach my $rAttr ( sort ( keys %reqAttrsList))
-        {
-            my $attrDefPath = '/attributes/attribute/id[text()=\''.$rAttr.'\']/ancestor::attribute';
 
-            foreach my $attrDefData ( $inXMLData->findnodes($attrDefPath) )
-            {
-                my @ret = parseAttributeDefinition($attrDefData, $inXMLData);
-                $attributeDefList{$ret[0]} = $ret[1];
-            }
+        loadAllowedFilterList(
+            $filterFile,
+            \%reqAttrsList,
+            "/allowedAttributes/attribute"
+        );
+
+        for my $rAttr (sort keys %reqAttrsList) {
+            my $path = "/attributes/attribute/id[text()='$rAttr']/ancestor::attribute";
+            push @attrNodes, $inXMLData->findnodes($path);
         }
     }
-    else
-    {
-        my $attrDefPath = '/attributes/attribute';
-        for my $attrDefData ( $inXMLData->findnodes($attrDefPath) )
-        {
-            my @ret = parseAttributeDefinition($attrDefData, $inXMLData);
-            $attributeDefList{$ret[0]} = $ret[1];
-        }
+    else {
+        @attrNodes = $inXMLData->findnodes('/attributes/attribute');
     }
 
-    return (%attributeDefList)
+    for my $attrDefData (@attrNodes) {
+        my ($id, $def) = parseAttributeDefinition($attrDefData, $inXMLData);
+        $attributeDefList{$id} = $def;
+    }
+
+    return %attributeDefList;
 }
+
 
 sub parseAttributeDefinition
 {
@@ -128,12 +110,6 @@ sub parseAttributeDefinition
     my $inXMLData = $_[1];
 
     my $attrID = $attrDef->findvalue('id');
-print ("deepa attrIDattrID :: $attrID\n ");
-    if ($attrID eq "PHYS_BIN_PATH")
-    {
-        use Data::Dumper;
-        print Dumper ($attrDef);
-    }
     if ( $attrID eq "" )
     {
         print "CRITICAL: AttributeDef ID missing in xml\n";
@@ -147,76 +123,6 @@ print ("deepa attrIDattrID :: $attrID\n ");
     }
 
     my $attributeDefinition = AttributeDefinition->new(simpleType=> new SimpleType());
-    my $global =  $attrDef->findvalue('global');
-    if( $global ne "" )
-    {
-        $attributeDefinition->global($global);
-    }
-
-    my $hasStringConversion = $attrDef->findvalue('hasStringConversion');
-    if( $hasStringConversion ne "")
-    {
-        $attributeDefinition->hasStringConversion($hasStringConversion);
-    }
-
-    my $hbOnly = $attrDef->findvalue('hbOnly');
-    if( $hbOnly ne "" )
-    {
-        $attributeDefinition->hbOnly($hbOnly);
-    }
-
-    if( $attrDef->exists('hwpfToAttrMap') )
-    {
-        my $id = $attrDef->findvalue('hwpfToAttrMap/id');
-        my $macro = $attrDef->findvalue('hwpfToAttrMap/macro');
-        $attributeDefinition->hwpfToAttrMap($id, $macro);
-    }
-    my $ignoreEkb = $attrDef->findvalue('ignoreEkb');
-    if( $ignoreEkb ne "")
-    {
-        $attributeDefinition->ignoreEkb($ignoreEkb);
-    }
-
-    my $mrwRequired = $attrDef->findvalue('mrwRequired');
-    if ( $mrwRequired ne "")
-    {
-        $attributeDefinition->mrwRequired($mrwRequired);
-    }
-
-    my $no_export = $attrDef->findvalue('no_export');
-    if ( $no_export ne "" )
-    {
-        $attributeDefinition->no_export($no_export);
-    }
-
-    my $persistency = $attrDef->findvalue('persistency');
-    if ( $persistency ne "")
-    {
-        $attributeDefinition->persistency($persistency);
-    }
-
-    if ( $attrDef->exists('range') )
-    {
-        my $max = $attrDef->findvalue('range/max');
-        my $min = $attrDef->findvalue('range/min');
-        $attributeDefinition->range($max, $min);
-    }
-
-    my $virtual = $attrDef->findvalue('virtual');
-    if ( $virtual ne "" )
-    {
-        $attributeDefinition->virtual($virtual);
-    }
-
-    if ( $attrDef->findnodes('readable')->size > 0)
-    {
-        $attributeDefinition->readable(1);
-    }
-
-    if ( $attrDef->findnodes('writeable')->size > 0)
-    {
-        $attributeDefinition->writeable(1);
-    }
 
     if( $attrDef->exists('nativeType') )
     {
@@ -255,15 +161,6 @@ print ("deepa attrIDattrID :: $attrID\n ");
         {
             $SimpleType->default($attrDef->findvalue('simpleType/Target_t/default'));
             $SimpleType->DataType("Target_t");
-        }
-        elsif( $attrDef->exists('simpleType/hbmutex'))
-        {
-            $SimpleType->default($attrDef->findvalue('simpleType/hbmutex/default'));
-            $SimpleType->DataType("hbmutex");
-        }
-        elsif( $attrDef->exists('simpleType/hbrecursivemutex'))
-        {
-            $SimpleType->DataType("hbrecursivemutex");
         }
         else
         {
@@ -340,8 +237,7 @@ print ("deepa attrIDattrID :: $attrID\n ");
                 {
                     $primitiveType = "uint32_t";
                     $SimpleType->subType($primitiveType);
-                    print "CRITICAL: enum value data type is not found for attribute $attrID\n";
-                    print "CRITICAL: Using default uint32_t type\n";
+                    print "DEBUG: Using default uint32_t type\n" if isVerboseReq('D');;
                 }
             }
             else
@@ -349,11 +245,30 @@ print ("deepa attrIDattrID :: $attrID\n ");
                 if( $primitiveType ne "" )
                 {
                     $SimpleType->DataType($primitiveType);
-                    $SimpleType->stringSize($attrDef->findvalue('simpleType/string/sizeInclNull')) if $primitiveType eq "string";;
+
+                    my $val = $SimpleType->default;
+                    if (defined $val 
+                        && $val ne "" 
+                        && $val !~ /^-?\d+$/ 
+                        && $val !~ /^0x[0-9A-Fa-f]+$/ 
+                        && $primitiveType ne "string")
+                    {
+                        
+                        $SimpleType->enumId($attrDef->findvalue('simpleType/enumeration/id'));
+                        my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$attrID.'\']/ancestor::enumerationType';
+                        my $enumDefData = $inXMLData->find($enumDefPath);
+                        if ( $enumDefData->size() > 0 )
+                        {
+                            my $enumDef = parseEnumerationTypes($enumDefData);
+                            $SimpleType->enumDefinition(parseEnumerationTypes($enumDefData));
+                        }
+                    }
+
+                    $SimpleType->stringSize($attrDef->findvalue('simpleType/string/sizeInclNull')) if $primitiveType eq "string";
                 }
                 else
                 {
-                    print "CRITICAL: Subtype is not found for simpleType of attribute $attrID\n";
+                    print "CRITICAL: Subtype is not found for simpleType of attribute $attrID\n " if isVerboseReq('C');
                     last;
                 }
             }
@@ -565,6 +480,7 @@ sub parseMRWTargetsData
             $attributeData->valueDataType("simpleType");
             $attributeData->value($MRWTargetAttrData->findvalue('default'));
             ${$mrwTarget->targetAttrList}{$AttrID} = $attributeData;
+            my $value = $MRWTargetAttrData->findvalue('default');
         }
     }
 
@@ -627,6 +543,7 @@ sub parseFAPITargetsData
             $attributeData->valueDataType("simpleType");
             $attributeData->value($FAPITargetAttrData->findvalue('default'));
             ${$fapiTarget->targetAttrList}{$AttrID} = $attributeData;
+            my $value = $FAPITargetAttrData->findvalue('default');
         }
     }
 

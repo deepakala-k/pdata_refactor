@@ -46,8 +46,8 @@ XMLTOHB_TARGET_MERGE_SCRIPT="updatetargetxml.pl"
 TEMP_DEFAULTS_XML="tempdefaults.xml"
 BMC_TEMP_DEFAULTS_XML="bmc_customized_ekb_attrs.xml"
 
-filter_attr="filter_AttributesList.lsv"
-filter_target="filter_TargetsList.lsv"
+filter_attr="filter_AttributesList.xml"
+filter_target="filter_TargetsList.xml"
 
 # Manually generated sources
 
@@ -341,6 +341,7 @@ for system_mrw_xml in $SYSTEMS_MRW_XML; do
         $GENDIR/${system_name}_bmc_mrw_filtered.xml
 
     final_merged_xml_file_name="${system_name/-MRW/}.xml"
+    dts_file_name="${system_name/-MRW/}.dts"
     echo "creating final merged file $final_merged_xml_file_name"
 
     # Step 15: Merge the contents of processed MRW output file, attributes
@@ -351,6 +352,17 @@ for system_mrw_xml in $SYSTEMS_MRW_XML; do
 
     if [ $? -ne 0 ]; then
         echo "${XMLTOHB_MERGE_SCRIPT} script failed to create ${final_merged_xml_file_name}"
+        exit 1
+    fi
+
+    #step 15: Create device tree from the 
+    "$TARGETING_XMLTOHB_REL_PATH/xmltoDTS.pl" \
+        --inXML ${GENDIR}/${final_merged_xml_file_name} \
+        --pdbgMapFile $TARGETING_XMLTOHB_PROC_REL_PATH/pdbgCompatibleNameMapping.xml \
+        --outDTS ${GENDIR}/${dts_file_name}
+    
+    if [ $? -ne 0 ]; then
+        echo "device tree generation failed\n"
         exit 1
     fi
 done

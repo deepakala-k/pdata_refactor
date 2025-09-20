@@ -89,7 +89,7 @@
   <attribute id="PROC_MASTER_TYPE"/>
   <attribute id="ISTEP_MODE"/>
   <attribute id="TYPE"/>
-  <attribute id="PHYS_DEV_PATH"/>
+  <attribute id="AFFINITY_BIN_PATH"/>
   <attribute id="PHYS_BIN_PATH"/>
   <attribute id="FAPI_NAME"/>
   <attribute id="CHIPLET_ID"/>
@@ -113,4 +113,5 @@
   <attribute id="I2C_PARENT_PHYS_PATH"/>
   <attribute id="CLASS"/>
   <attribute id="HW_ACCESS_PTR"/>
+  <attribute id="FREQ_PAU_VPD_MHZ"/>
 </allowedAttributes>

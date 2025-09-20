@@ -53,6 +53,24 @@
     <persistency>non-volatile</persistency>
     <readable/>
   </attribute>
+
+  <attribute>
+    <description>This attribute is used to maintain affinity hierarchical path value into binary format. The path value maintained in 21 byte array. First byte is contained path type (first 4 bits) and size of path elements (second 4 bits). The remaining 20 bytes are pair (target type and instance id) of path elements (max path element in path is 10) i.e first field in pair is used to maintain target type enum value and second field in pair is used to maintain the target instance id.
+            E.g.: affinity:sys-0/node-0/proc-1
+            binary format: 0x13 0x01 0x00 0x02 0x00 0x05 0x01
+            0x23 =&gt; 0010 0011
+                    0010 - if path is physical then path type is 2 if logical then 1 so, 2.
+                    0011 - size of path elements so, based on example size is 3.
+        </description>
+    <simpleType>
+      <array>21</array>
+      <uint8_t/>
+    </simpleType>
+    <id>AFFINITY_BIN_PATH</id>
+    <persistency>non-volatile</persistency>
+    <readable/>
+  </attribute>
+
   <attribute>
     <description>FSI device path for cfam operations</description>
     <id>FSI_DEVICE_PATH</id>
@@ -136,7 +154,6 @@
         <default>NO_DECONFIG</default>
         <id>SYS_CLOCK_DECONFIG_STATE</id>
       </enumeration>
-      <uint32_t/>
     </simpleType>
   </attribute>
   <attribute>
@@ -209,7 +226,6 @@
         <default>SBEFIFO</default>
         <id>HW_ACCESS_METHOD</id>
       </enumeration>
-      <uint8_t/>
     </simpleType>
     <writeable/>
   </attribute>

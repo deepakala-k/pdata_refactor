@@ -60,7 +60,6 @@ GetOptions( "inXML:s"           => \$inXMLFile,
             "outDTS:s"          => \$dtsFilename,
             "filterAttrsFile:s" => \$filterAttrsFile,
             "filterTgtsFile:s"  => \$filterTgtsFile,
-            "pdbgMapFile:s"   => \$pdbgMapFile,
             "help"            => \$help,
             "verbose=s",      => \$myVerbose
           );
@@ -85,11 +84,7 @@ if ( ($dtsFilename ne "") and !($dtsFilename =~ m/\.dts/ ))
     print "The given dts file name \"$dtsFilename\" extension is not .dts\n";
     exit 1;
 }
-if ( $pdbgMapFile eq "")
-{
-    print "--pdbgMapFile is required with mrw target type name with respective pdbg compatible property name to store into dts\n";
-    exit 1;
-}
+
 
 # Start fomr main function
 main();
@@ -158,9 +153,6 @@ sub init
     my $fapiSize = keys %fapiTargetList;
     my $attrsSize = keys %attributeDefList;
     print "INFO: mrwTgtSize: $mrwSize fapiTgtSize: $fapiSize attrsSize: $attrsSize\n" if isVerboseReq('I');
-    %pdbgCompPropMapList = getRequiredTgtsPdbgCompPropMapList ( $pdbgMapFile );
-
-    my $pdbgSize = keys %pdbgCompPropMapList;
 }
 
 sub mergeFAPITargetAttrsIntoMRWIfFound
@@ -203,22 +195,6 @@ sub mergeFAPITargetAttrsIntoMRWIfFound
     }
 }
 
-sub insertGivenTargetInbetween {
-    my ($finalPath, $targetBase, $targetToBeAdded) = @_;  # Capture arguments: path and target base string
-
-    # Match the targetBase followed by an optional dash and digits, ensuring it ends with a slash
-    if ($finalPath =~ /(.*?($targetBase(?:-\d+)?\/))/) {
-        # Capture the part of the string including "proc-xx/"
-        my $prefix = $1;
-        # Capture the rest of the string after the match
-        my $remainingPath = $';
-        # Insert "targetToBeAdded" after the match
-        $finalPath = $prefix . $targetToBeAdded. "/" . $remainingPath;
-    }
-
-    return $finalPath;  # Return the modified path
-}
-
 sub prepareDeviceTreeHierarchy
 {
     my %nonPervTgtsList;
@@ -230,96 +206,17 @@ sub prepareDeviceTreeHierarchy
     {
         my $attrList = $mrwTargetList{$MRWTargetID}->targetAttrList;
 
-        # Ignoring if dimm, ocmb and memport targets because those targets should come under omi and omi is pervasive target
-        # but ignoring targets are not pervasive targets. Those targets device tree hierarchy will prepare based on
-        # omi pervasive path which is prepared in this for loop
-
-        # if ( index( $mrwTargetList{$MRWTargetID}->targetType, "dimm") != -1 or
-        #      index( $mrwTargetList{$MRWTargetID}->targetType, "ddr") != -1 or
-        #      index( $mrwTargetList{$MRWTargetID}->targetType, "chip-ocmb") != -1 or
-        #      index( $mrwTargetList{$MRWTargetID}->targetType, "unit-mem_port") != -1 or
-        #      $mrwTargetList{$MRWTargetID}->targetType eq "unit-perv" or
-        #      index( $mrwTargetList{$MRWTargetID}->targetType, "chip-vreg-generic") != -1 or
-        #      index( $mrwTargetList{$MRWTargetID}->targetType, "chip-adc") != -1 or
-        #      index( $mrwTargetList{$MRWTargetID}->targetType, "chip-PCA9554") != -1
-        #    )
-        # {
-        #     $nonPervTgtsList{$MRWTargetID} = $mrwTargetList{$MRWTargetID};
-        #     next;
-        # }
-
-        if ( !exists ${$attrList}{'PHYS_PATH'} )
+        if ( !exists ${$attrList}{'AFFINITY_PATH'} )
         {
-            print "CRITICAL: \"PHYS_PATH\" attribute is not found for MRW Target : \"$MRWTargetID\". So Ignoring\n" if isVerboseReq('C');
+            print "CRITICAL: \"AFFINITY_PATH\" attribute is not found for MRW Target : \"$MRWTargetID\". So Ignoring\n" if isVerboseReq('C');
             next;
         }
-        my $physPath = ${$attrList}{'PHYS_PATH'}->value;
-
-        my $finalPath = $physPath;
-        my $pervasivePath;
-        # If parvasive path found for a particular target then considering that path should beto rearrange.
-        # Because FAPI targets are modelled based on pervasive targets
-        
-
-        if ( exists $attrList->{'PARENT_PERVASIVE'} 
-            && defined $attrList->{'PARENT_PERVASIVE'}->value 
-            && $attrList->{'PARENT_PERVASIVE'}->value ne "" ) 
-        {
-            # E.g. :
-            # $pervasivePath = "physical:sys-0/node-0/proc-0/perv-32";
-            # $physPath = "physical:sys-0/node-0/proc-0/eq-0/fc-0/core-0";
-            # $finalPath => physical:sys-0/node-0/proc-0/perv-32/eq-0/fc-0/core-0
-
-            $pervasivePath = ${$attrList}{'PARENT_PERVASIVE'}->value;
-            $finalPath = $pervasivePath.substr($physPath, rindex($pervasivePath, "/"), length($physPath) - rindex($pervasivePath, "/") );
-        }
-        # If the I2C_PARENT_PHYS_PATH attribute is found for a particular
-        # target then, that target need to add under the respective I2C
-        # target along with its parent.
-        # For example, the OSCREFCLK (chip-SI5332) target need to be present
-        # as "bmcN -> i2c-N ->oscrefclkN" in the device tree to perform
-        # the i2c read and write operation on the OSCREFCLK target.
-        if ( exists ${$attrList}{'I2C_PARENT_PHYS_PATH'} )
-        {
-            # E.g. :
-            # $i2cParentPhysPath = "physical:sys-0/node-0/bmc-0";
-            # $physPath = "physical:sys-0/node-0/oscrefclk-0";
-            # $finalPath => physical:sys-0/node-0/bmc-0/i2c-$i2cPort/oscrefclk-0
-
-            my $i2cParentPhysPath = ${$attrList}{'I2C_PARENT_PHYS_PATH'}->value;
-            my $i2cPort = ${$attrList}{'I2C_PORT'}->value;
-
-            my $commonPathElePos;
-            for my $i (0..length($i2cParentPhysPath) - 1)
-            {
-                my $a = substr($i2cParentPhysPath, $i, 1);
-                my $b = substr($physPath, $i, 1);
-                if ($a ne $b)
-                {
-                    $commonPathElePos = $i - 1;
-                    last;
-                }
-            }
-
-            # The I2C_PORT needs to decrement by one since the i2c instance
-            # id will start from "0".
-            $finalPath = $i2cParentPhysPath . "/i2c-" . ($i2cPort - 1);
-            $finalPath .= substr($physPath, $commonPathElePos);
-        }
+        my $affinityPath = ${$attrList}{'AFFINITY_PATH'}->value;
 
         # Getting path value alone by ignoring "physical:"
-        my @hash = split(/\//, substr($finalPath, index($finalPath, ':') + 1));
+        my @hash = split(/\//, substr($affinityPath, index($affinityPath, ':') + 1));
         processTargetPath($MRWTargetID, \@hash);
-        # Create omi pervasive path list for use to dimm. ocmb and memport targets
-        $omiPervPath{$MRWTargetID} = $finalPath if index( $mrwTargetList{$MRWTargetID}->targetType, "unit-omi") != -1;
-
-        # Add thread target manually under core target as per pdbg expectation for
-        # register access
-        addThreadTarget($MRWTargetID, $finalPath) if index($mrwTargetList{$MRWTargetID}->targetType, "unit-core") != -1;
     }
-
-    # Prepare device tree hierarchy for non pervasive targets which need to come under proc/.../omi target hierarchy
-    prepareDeviceTreeHierarchyForNonPervTgts(\%nonPervTgtsList, \%omiPervPath);
 }
 
 sub addThreadTarget
@@ -444,72 +341,6 @@ sub processTargetPath
     $lastNode->compatible($mrwTargetList{$TargetID} -> MRWTarget::targetType);
     $lastNode->attributeList($mrwTargetList{$TargetID} -> MRWTarget::targetAttrList);
 
-    # Using CHIP_UNIT for index attribute if exist
-    # because unit id should be unique within proc target as per pdbg
-    # expectation for address translation
-    if (exists ${$lastNode->attributeList}{"CHIP_UNIT"})
-    {
-        $lastNode->index(${$lastNode->attributeList}{"CHIP_UNIT"}->value);
-    }
-    # Filling index for ocmb based on omi target
-    # CHIP_UNIT attribute because, those targets are not pervasive target
-    if ( index( $lastNode->compatible, "chip-ocmb") != -1 )
-    {
-        #get the number at the end of the physical path and use that as the index
-        if (exists ${$lastNode->attributeList}{"PHYS_PATH"})
-        {
-            my $input = ${$lastNode->attributeList}{"PHYS_PATH"}->value;
-            my $index = 0;
-            if ($input =~ /(\d+)$/) 
-            {
-                $index = $1;
-            }
-            $lastNode->index($index);
-        }
-        # Changing node name for ocmb target as per pdbg expectation.
-        # Removing "_chip" from ocmb target element value from PHYS_PATH value.
-        my $nodeName = $lastNode->nodeName;
-        $nodeName =~ s/_chip//g;
-        $lastNode->nodeName($nodeName);
-    }
-    #for the dimms also use the index same as its position
-    elsif (index ($lastNode->compatible, "ddr") != -1)
-    {
-        #get the number at the end of the physical path and use that as the index
-        if (exists ${$lastNode->attributeList}{"PHYS_PATH"})
-        {
-            my $input = ${$lastNode->attributeList}{"PHYS_PATH"}->value;
-            my $index = 0;
-            if ($input =~ /(\d+)$/) 
-            {
-                $index = $1;
-            }
-            $lastNode->index($index);
-        }
-    }
-    elsif ($lastNode->compatible eq "chip-adc")
-    {
-        my $nodeName = $lastNode->nodeName;
-        $nodeName =~ s/generic_i2c_device/adc/g;
-        $lastNode->nodeName($nodeName);
-        $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
-    }
-    elsif ($lastNode->compatible eq "chip-PCA9554")
-    {
-        my $nodeName = $lastNode->nodeName;
-        $nodeName =~ s/generic_i2c_device/gpio_expander/g;
-        $lastNode->nodeName($nodeName);
-        $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
-    }
-    elsif ($lastNode->compatible eq "chip-vreg-generic")
-    {
-        $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
-    }
-    elsif (index ($lastNode->compatible, "unit-mem_port") != -1)
-    {
-        $lastNode->index(${$lastNode->attributeList}{"FAPI_POS"}->value);
-    }
-
     # Add the reg property for the target if that contains "I2C_ADDRESS"
     # attribute to perform the i2c read and write operation on this target.
     if (exists ${$lastNode->attributeList}{"I2C_ADDRESS"})
@@ -619,23 +450,10 @@ sub addTargetDataIntoDTSFile
 
     my %attributeList = %{$devTreeNode->attributeList};
 
-    if ( $compPropReqAdd eq "1" )
-    {
-        # Add "compatible" property
-        my $pdbgCompPropertyVal;
-        if ( exists $pdbgCompPropMapList{$devTreeNode->compatible} )
-        {
-            $pdbgCompPropertyVal = $pdbgCompPropMapList{$devTreeNode->compatible};
-            # Not adding double quotes if present, to support list of compatible property
-            $pdbgCompPropertyVal = "\"".$pdbgCompPropertyVal."\"" if !( $pdbgCompPropertyVal =~ m/"/);
-        }
-        else # If not found using mrw target type name only
-        {
-            $pdbgCompPropertyVal = "\"".$devTreeNode->compatible."\"";
-        }
+    # Add "compatible" property
+    my $pdbgCompPropertyVal = "\"".$devTreeNode->compatible."\"";
 
-        print {$dtsFHandle} "compatible = $pdbgCompPropertyVal;\n" if $pdbgCompPropertyVal ne "\"\""; # not adding empty
-    }
+    print {$dtsFHandle} "compatible = $pdbgCompPropertyVal;\n" if $pdbgCompPropertyVal ne "\"\""; # not adding empty
 
     if ($devTreeNode->reg ne "")
     {
@@ -665,16 +483,15 @@ sub addTargetDataIntoDTSFile
         print {$dtsFHandle} "index = $nodeIndexHex;\n";
     }
 
-    # Adding PHYS_DEV_PATH and PHYS_BIN_PATH attributes value by using PHYS_PATH attribute.
     # because, PHYS_PATH type is class which is not supported in device tree.
-    if (exists $attributeList{"PHYS_DEV_PATH"})
-    {
-        $attributeList{"PHYS_DEV_PATH"}->value($attributeList{"PHYS_PATH"}->value);
-    }
-
     if (exists $attributeList{"PHYS_BIN_PATH"})
     {
-        $attributeList{"PHYS_BIN_PATH"}->value(getBinaryFormatForPhysPath($attributeList{"PHYS_PATH"}->value));
+        $attributeList{"PHYS_BIN_PATH"}->value(getBinaryFormatForPath($attributeList{"PHYS_PATH"}->value, "PHYS_BIN_PATH"));
+    }
+
+    if (exists $attributeList{"AFFINITY_BIN_PATH"})
+    {
+        $attributeList{"AFFINITY_BIN_PATH"}->value(getBinaryFormatForPath($attributeList{"AFFINITY_PATH"}->value, "AFFINITY_BIN_PATH"));
     }
 
     # Attributes
@@ -701,10 +518,6 @@ sub addTargetDataIntoDTSFile
         {
             my $attrVal = $attributeList{$AttrID} -> AttributeData::value;
 
-            # TODO Need to revisit setting CHIP_UNIT_POS value from CHIP_UNIT
-            # Added beacuse HWPs expecting CHIP_UNIT_POS value and its should come MRW
-            # So once added in MRW need to remove
-            $attrVal = $attributeList{"CHIP_UNIT"} -> AttributeData::value if $AttrID eq "CHIP_UNIT_POS";
             # Getting default value from attribute definition if not value is defined
             my $simpleType = $attributeDefList{$AttrID}-> AttributeDefinition::simpleType;
             my $simpleTypeDefault = $simpleType->default;
@@ -716,7 +529,6 @@ sub addTargetDataIntoDTSFile
                 $attrVal = 0;
                 $isToolAddedDefVal = 1;
             }
-
             if( $simpleType->DataType eq "array")
             {
                 my $eleCnt = 1;
@@ -756,6 +568,48 @@ sub addTargetDataIntoDTSFile
                 else
                 {
                     @arrayValues = split(/,/,$attrVal);
+                    foreach my $arrVal (@arrayValues)
+                    {
+                        if (defined $arrVal 
+                            && $arrVal ne "" 
+                            && $arrVal !~ /^-?\d+$/ 
+                            && $arrVal !~ /^0x[0-9A-Fa-f]+$/ )
+                        {
+                            #################
+                            $simpleType->enumId($AttrID);
+                            my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
+                            my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
+                            my $enumDefData = $inXMLData->find($enumDefPath);
+                            if ( $enumDefData->size() > 0 )
+                            {
+                                my $enumDef = parseEnumerationTypes($enumDefData);
+                                $simpleType->enumDefinition(parseEnumerationTypes($enumDefData));
+                            }
+                            #######################
+
+                            my $enumName = $arrVal if $arrVal ne "";
+
+                            # Getting default value from enum definition if value is not defined
+                            my $enumDef = $simpleType->enumDefinition;
+                            $enumName = $enumDef->default if $enumName eq "";
+
+                            my $enumVal;
+                            if ($enumName ne "0")
+                            {
+                                # Getting enum value from enum name
+                                $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $enumName);
+
+                                # Setting first enum value as default value,
+                                $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
+                            }
+                            else
+                            {
+                                $enumVal = $enumName;
+                            }
+                            $arrVal = $enumVal;
+                        }
+                    }
+
                 }
 
                 # Adding 0 for non available value for array element count
@@ -765,13 +619,6 @@ sub addTargetDataIntoDTSFile
                     push(@arrayValues, 0)
                 }
                 setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType."_".$simpleType->subType, \@arrayValues, $eleCnt)
-            }
-            elsif ( $simpleType->DataType eq "int8_t" or $simpleType->DataType eq "int16_t" or $simpleType->DataType eq "int32_t"  or $simpleType->DataType eq "int64_t" or 
-                $simpleType->DataType eq "uint8_t" or $simpleType->DataType eq "uint16_t" or $simpleType->DataType eq "uint32_t"  or $simpleType->DataType eq "uint64_t")
-            {
-                my @arrayValues;
-                push(@arrayValues, $attrVal);
-                setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, \@arrayValues, 1)
             }
             elsif ( $simpleType->DataType eq "enum")
             {
@@ -812,6 +659,62 @@ sub addTargetDataIntoDTSFile
                 my $strAttrVal = pack("Z$size", $attrVal);
                 my @arrayValues;
                 push(@arrayValues, $strAttrVal);
+                setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, \@arrayValues, 1)
+            }
+            elsif ( $simpleType->DataType eq "int8_t" or $simpleType->DataType eq "int16_t" or $simpleType->DataType eq "int32_t"  or $simpleType->DataType eq "int64_t" or 
+                $simpleType->DataType eq "uint8_t" or $simpleType->DataType eq "uint16_t" or $simpleType->DataType eq "uint32_t"  or $simpleType->DataType eq "uint64_t")
+            {
+                my @arrayValues;
+                    
+                if ( $attrVal eq 'true' )
+                {
+                    $attrVal = 1;
+                }
+                elsif ( $attrVal eq 'false' )
+                {
+                    $attrVal = 0;
+                }
+                if (defined $attrVal 
+                        && $attrVal ne "" 
+                        && $attrVal !~ /^-?\d+$/ 
+                        && $attrVal !~ /^0x[0-9A-Fa-f]+$/ )
+                {
+                    #################
+                    $simpleType->enumId($AttrID);
+                    my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
+                    my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
+                    my $enumDefData = $inXMLData->find($enumDefPath);
+                    if ( $enumDefData->size() > 0 )
+                    {
+                        my $enumDef = parseEnumerationTypes($enumDefData);
+                        $simpleType->enumDefinition(parseEnumerationTypes($enumDefData));
+                    }
+                    #######################
+
+                    my $enumName = $attrVal if $attrVal ne "";
+
+                    # Getting default value from enum definition if value is not defined
+                    my $enumDef = $simpleType->enumDefinition;
+                    $enumName = $enumDef->default if $enumName eq "";
+
+                    my $enumVal;
+                    if ($enumName ne "0")
+                    {
+                        # Getting enum value from enum name
+                        $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $enumName);
+
+                        # Setting first enum value as default value,
+                        $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
+                    }
+                    else
+                    {
+                        $enumVal = $enumName;
+                    }
+                    $attrVal = $enumVal;
+                }
+
+
+                push(@arrayValues, $attrVal);
                 setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, \@arrayValues, 1)
             }
         }
@@ -976,20 +879,19 @@ sub getEnumVal
     return "";
 }
 
-sub getBinaryFormatForPhysPath
+sub getBinaryFormatForPath
 {
-    my $physPath = $_[0];
-
-    my ($pathType, $path) = split(/:/, $physPath);
+    my ($phyOrAffpath, $attrToConstruct) = @_;
+    my ($pathType, $path) = split(/:/, $phyOrAffpath);
     my @pathElements = split(/\//, $path);
     my $pathElementsSize = @pathElements;
 
     # Reducing one from configured array size and dividing by 2 to get path element size
-    my $configpathElementsSize = ($attributeDefList{"PHYS_BIN_PATH"}->simpleType->arrayDimension - 1) / 2;
+    my $configpathElementsSize = ($attributeDefList{$attrToConstruct}->simpleType->arrayDimension - 1) / 2;
 
     if ( $configpathElementsSize < $pathElementsSize )
     {
-        print "CRITICAL: The max path element size of PHYS_BIN_PATH is $configpathElementsSize but the given path element size in PHYS_DEV_PATH attribute value[$physPath] is $pathElementsSize\n" if isVerboseReq('C');
+        print "CRITICAL: The max path element size of $$attrToConstruct is $configpathElementsSize but the given path element size in PHYS_DEV_PATH attribute value[$phyOrAffpath] is $pathElementsSize\n";
         return "";
     }
 
@@ -997,9 +899,13 @@ sub getBinaryFormatForPhysPath
     {
         $pathType = 2;
     }
+    elsif ( $pathType eq "affinity" )
+    {
+        $pathType = 1;
+    }
     else
     {
-        print "CRITICAL: Invalid path type[$pathType] in given path [$physPath]\n" if isVerboseReq('C');
+        print "CRITICAL: Invalid path type[$pathType] in given path [$phyOrAffpath]\n";
         return "";
     }
 
@@ -1027,7 +933,7 @@ sub getBinaryFormatForPhysPath
 
         if ( $found eq 0 )
         {
-            print "CRITICAL: The given path element type[$pathEleFields[0]] for path[$physPath] is not found in TYPE attibute enum list.\n" if isVerboseReq('C');
+            print "CRITICAL: The given path element type[$pathEleFields[0]] for path[$path] is not found in TYPE attibute enum list.\n" if isVerboseReq('C');
             return "";
         }
     }

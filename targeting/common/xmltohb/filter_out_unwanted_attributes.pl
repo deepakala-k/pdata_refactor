@@ -85,25 +85,19 @@ sub usage
     exit(-1);
 }
 
-sub loadAllowedFilterList
-{
-    my ( $filter_file, $allowed_list_ref, $filter_is_active_ref ) = @_;
+sub loadAllowedFilterList {
+    my ($xmlFile, $allowedList, $pathToLook, $filter_is_active_ref) = @_;
 
-    if ($filter_file)
-    {
-        open my $fh, '<', $filter_file or die "Cannot open $filter_file: $!";
-        while ( my $line = <$fh> )
-        {
-            chomp $line;
-            next if $line =~ /^\s*#/;    # skip comment lines
-            next if $line eq '';         # skip empty lines
-            $allowed_list_ref->{$line} = 1;
+    my $parser = XML::LibXML->new();
+    my $doc    = $parser->parse_file($xmlFile);
+
+    foreach my $attrNode ($doc->findnodes($pathToLook)) {
+        my $id = $attrNode->findvalue('@id');
+        if ($id ne "") {
+            $allowedList->{$id} = 1;
         }
-        close $fh;
     }
-
-    # set the scalar behind the reference
-    $$filter_is_active_ref = scalar( keys %$allowed_list_ref ) > 0;
+    $$filter_is_active_ref = scalar( keys %$allowedList ) > 0;
 }
 
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
@@ -130,11 +124,17 @@ if ( defined $tgt_files[1] )
 # check if filter file is provided, update the list accordingly
 my %allowed_attr_list;
 my $attr_filter_is_active;
-loadAllowedFilterList( $attr_filter_file, \%allowed_attr_list, \$attr_filter_is_active );
+loadAllowedFilterList( $attr_filter_file, 
+    \%allowed_attr_list,
+    "/allowedAttributes/attribute",
+    \$attr_filter_is_active );
 
 my %allowed_tgt_list;
 my $tgt_filter_is_active;
-loadAllowedFilterList( $target_filter_file, \%allowed_tgt_list, \$tgt_filter_is_active );
+loadAllowedFilterList( $target_filter_file,
+    \%allowed_tgt_list,
+    "/allowedTargets/targetType",
+    \$tgt_filter_is_active);
 
 # This loop will fetch all targetTypeExtension from platform target types xml
 # and push it in an array "@NewAttr"

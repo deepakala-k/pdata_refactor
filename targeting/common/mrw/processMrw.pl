@@ -1200,6 +1200,7 @@ sub processProcessorAndChildren
     $targetObj->setAttribute($target, "FAPINAME_POS", $procPosPerNode);
     $targetObj->setAttribute($target, "AFFINITY_PATH", $procAffinity);
     $targetObj->setAttribute($target, "PHYS_PATH",     $procPhysical);
+    print ("deepa PHYS_PATH:: $procPhysical\n");
 
     # Save this target for retrieval later when printing the xml (sub printXML)
     $targetObj->{targeting}{SYS}[$sysParentPos]{NODES}[$nodeParentPos]
@@ -3074,6 +3075,7 @@ sub setProcMasterStatus
     # Both for FSP and BMC based systems, it's good  enough
     # to look for processor with active LPC bus connected
     my $lpcs = $targetObj->findConnections($target, "LPC", "");
+    print (" deepa setProcMasterStatus\n");
 
     # If LPC found, then this PROC is the master
     if ($lpcs ne "")
@@ -3081,6 +3083,7 @@ sub setProcMasterStatus
         $targetObj->log ($target, "Setting $target as ACTING_MASTER");
         $targetObj->setAttribute($target, "PROC_MASTER_TYPE", "ACTING_MASTER");
         $targetObj->setAttribute($target, "PROC_SBE_MASTER_CHIP", "TRUE");
+        print " deepa die-ing\n";
     }
 } # end sub setProcMasterStatus
 

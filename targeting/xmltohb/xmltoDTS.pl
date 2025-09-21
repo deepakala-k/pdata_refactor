@@ -155,12 +155,10 @@ sub loadTargetTypeDefaultIfNoTargetInstanceDefault
 {
     foreach my $targetTypeID ( keys %targetTypeList )
     {
-        my $found = 0;
         foreach my $targetInstanceID ( keys %targetInstanceList )
         {
             if($targetTypeID eq $targetInstanceList{$targetInstanceID} -> TargetInstance::targetType)
             {
-                $found = 1;
                 my $targetInstance = $targetInstanceList{$targetInstanceID};
                 my %updatedTargetInstanceAttrsList = %{$targetInstance->targetAttrList};
                 my %targetTypeAttrsList = %{$targetTypeList{$targetTypeID} -> TargetType::targetAttrList};
@@ -183,11 +181,6 @@ sub loadTargetTypeDefaultIfNoTargetInstanceDefault
                 $targetInstance->targetAttrList(\%updatedTargetInstanceAttrsList);
             }
         }
-
-        if($found eq 1)
-        {
-            print "INFO: TargetType target: $targetTypeID merged with TargetInstance target. Hence removing element from TargetType targets list\n" if isVerboseReq('I');
-        }
     }
 }
 
@@ -209,7 +202,7 @@ sub prepareDeviceTreeHierarchy
         }
         my $affinityPath = ${$attrList}{'AFFINITY_PATH'}->value;
 
-        # Getting path value alone by ignoring "physical:"
+        # Getting path value alone by ignoring "affinity:"
         my @hash = split(/\//, substr($affinityPath, index($affinityPath, ':') + 1));
         processTargetPath($targetInstanceID, \@hash);
     }

@@ -14,8 +14,8 @@ require "$currDir/utils.pl";
 
 my $verbose = "";
 
-# Preparing structure type for MRW attribute definition
-# This can used for ekb xml if ekb xml converted into MRW format
+# Preparing structure type for targetInstance attribute definition
+# This can used for ekb xml if ekb xml converted into targetInstance format
 use Class::Struct;
 
 struct ComplexTypeField => {
@@ -345,14 +345,14 @@ sub parseEnumerationTypes
     }
 }
 
-# Preparing struct type for MRW targets
+# Preparing struct type for targetInstance targets
 
 struct TargetInstance => {
     targetType          => '$',
     targetAttrList      => '%',
 };
 
-# Preparing struct type for FAPI targets
+# Preparing struct type for targettype targets
 
 struct TargetType => {
     targetParent        => '$',
@@ -382,7 +382,7 @@ sub getTargetInstanceAndTargetTypeData
 
         foreach my $rTgt ( sort ( keys %reqTgtsList) )
         {
-            # Parse MRW Targets
+            # Parse targetInstance Targets
             my $TargetInstanceTgtPath = '/attributes/targetInstance/type[text()=\''.$rTgt.'\']/ancestor::targetInstance';
             my $targetInstanceTargetData = $inXMLData->findnodes($TargetInstanceTgtPath);
 
@@ -396,10 +396,10 @@ sub getTargetInstanceAndTargetTypeData
             }
             else
             {
-                print "CRITICAL: Required MRW target $rTgt data is not found in xml\n" if isVerboseReq('C');
+                print "CRITICAL: Required targetInstance target $rTgt data is not found in xml\n" if isVerboseReq('C');
             }
 
-            # Parse FAPI Targets
+            # Parse targettype Targets
             my $targetTypeTargetPath = '/attributes/targetType/id[text()=\''.$rTgt.'\']/ancestor::targetType';
             my $targetTypeTargetData = $inXMLData->findnodes($targetTypeTargetPath);
             if ($targetTypeTargetData->size() > 0 )
@@ -412,7 +412,7 @@ sub getTargetInstanceAndTargetTypeData
             }
         }
     }
-    else # Parse all MRW and FAPI targets from xml if required targets list doesn't given
+    else # Parse all targetInstance and targettype targets from xml if required targets list doesn't given
     {
         my $TargetInstanceTgtPath = '/attributes/targetInstance';
         foreach my $targetInstanceTargetData ( $inXMLData->findnodes($TargetInstanceTgtPath) )
@@ -435,38 +435,38 @@ sub getTargetInstanceAndTargetTypeData
 sub parseTargetInstanceData {
     my ($eachTargetInstanceData) = @_;
 
-    my $MRWTargetID = $eachTargetInstanceData->findvalue('id');
-    unless ($MRWTargetID) {
-        print "CRITICAL: Target \"id\" is missing for MRW target in xml\n" if isVerboseReq('C');
+    my $TargetInstanceID = $eachTargetInstanceData->findvalue('id');
+    unless ($TargetInstanceID) {
+        print "CRITICAL: Target \"id\" is missing for targetInstance target in xml\n" if isVerboseReq('C');
         return;
     }
 
     my $targetType = $eachTargetInstanceData->findvalue('type');
     unless ($targetType) {
-        print "CRITICAL: Target \"type\" is missing for MRW target: $MRWTargetID in xml\n" if isVerboseReq('C');
+        print "CRITICAL: Target \"type\" is missing for targetInstance target: $TargetInstanceID in xml\n" if isVerboseReq('C');
         return;
     }
 
-    my $mrwTarget = TargetInstance->new(targetType => $targetType);
+    my $targetInstance = TargetInstance->new(targetType => $targetType);
 
-    foreach my $MRWTargetAttrData ($eachTargetInstanceData->findnodes('attribute')) {
-        my $AttrID = $MRWTargetAttrData->findvalue('id');
+    foreach my $TargetInstanceAttrData ($eachTargetInstanceData->findnodes('attribute')) {
+        my $AttrID = $TargetInstanceAttrData->findvalue('id');
         unless ($AttrID) {
-            print "ERROR: Attribute \"id\" is missing for MRW target: $MRWTargetID in xml\n";
+            print "ERROR: Attribute \"id\" is missing for targetInstance target: $TargetInstanceID in xml\n";
             next;
         }
 
         my $attributeData;
-        if ($MRWTargetAttrData->exists('default/field')) {
-            $attributeData = _parse_complex_attribute($MRWTargetID, $AttrID, $MRWTargetAttrData);
+        if ($TargetInstanceAttrData->exists('default/field')) {
+            $attributeData = _parse_complex_attribute($TargetInstanceID, $AttrID, $TargetInstanceAttrData);
         } else {
-            $attributeData = _parse_simple_attribute($MRWTargetAttrData);
+            $attributeData = _parse_simple_attribute($TargetInstanceAttrData);
         }
 
-        ${ $mrwTarget->targetAttrList }{$AttrID} = $attributeData if $attributeData;
+        ${ $targetInstance->targetAttrList }{$AttrID} = $attributeData if $attributeData;
     }
 
-    return ($MRWTargetID, $mrwTarget);
+    return ($TargetInstanceID, $targetInstance);
 }
 
 # ----------------------------
@@ -474,21 +474,21 @@ sub parseTargetInstanceData {
 # ----------------------------
 
 sub _parse_complex_attribute {
-    my ($MRWTargetID, $AttrID, $MRWTargetAttrData) = @_;
+    my ($TargetInstanceID, $AttrID, $TargetInstanceAttrData) = @_;
 
     my $attributeData = AttributeData->new(valueDataType => "complexType");
 
-    foreach my $field ($MRWTargetAttrData->findnodes('default/field')) {
+    foreach my $field ($TargetInstanceAttrData->findnodes('default/field')) {
         my $fieldID = $field->findvalue('id');
         unless ($fieldID) {
-            print "CRITICAL: Field \"id\" is missing for complex attribute $AttrID of MRW target: $MRWTargetID in xml\n"
+            print "CRITICAL: Field \"id\" is missing for complex attribute $AttrID of targetInstance target: $TargetInstanceID in xml\n"
               if isVerboseReq('C');
             next;
         }
 
         my $fieldValue = $field->findvalue('value');
         unless ($fieldValue) {
-            print "WARNING: Field \"value\" is missing for field id: $fieldID in attribute: $AttrID of MRW target: $MRWTargetID\n"
+            print "WARNING: Field \"value\" is missing for field id: $fieldID in attribute: $AttrID of targetInstance target: $TargetInstanceID\n"
               if isVerboseReq('W');
         }
 
@@ -499,10 +499,10 @@ sub _parse_complex_attribute {
 }
 
 sub _parse_simple_attribute {
-    my ($MRWTargetAttrData) = @_;
+    my ($TargetInstanceAttrData) = @_;
 
     my $attributeData = AttributeData->new(valueDataType => "simpleType");
-    $attributeData->value($MRWTargetAttrData->findvalue('default'));
+    $attributeData->value($TargetInstanceAttrData->findvalue('default'));
 
     return $attributeData;
 }
@@ -511,61 +511,61 @@ sub _parse_simple_attribute {
 sub parseTargetTypeData {
     my ($TargetTypeData) = @_;
 
-    my $FAPITargetID = $TargetTypeData->findvalue('id');
-    unless ($FAPITargetID) {
-        print "CRITICAL: FAPI target \"id\" is missing in xml\n" if isVerboseReq('C');
+    my $TargetTypeID = $TargetTypeData->findvalue('id');
+    unless ($TargetTypeID) {
+        print "CRITICAL: targettype target \"id\" is missing in xml\n" if isVerboseReq('C');
         return; # use return instead of last
     }
 
-    my $fapiTarget = TargetType->new();
-    $fapiTarget->targetParent($TargetTypeData->findvalue('parent'));
+    my $targetTypeTarget = TargetType->new();
+    $targetTypeTarget->targetParent($TargetTypeData->findvalue('parent'));
 
-    if ($fapiTarget->targetParent eq "" and $FAPITargetID ne "base") {
-        print "ERROR: Parent \"value\" is missing for FAPI target: $FAPITargetID in xml\n"
+    if ($targetTypeTarget->targetParent eq "" and $TargetTypeID ne "base") {
+        print "ERROR: Parent \"value\" is missing for targettype target: $TargetTypeID in xml\n"
             if isVerboseReq('E');
         # TODO: Uncomment return when common plats xml is used
         # return;
     }
 
-    foreach my $FAPITargetAttrData ($TargetTypeData->findnodes('attribute')) {
-        my $AttrID = $FAPITargetAttrData->findvalue('id');
+    foreach my $TargetTypeAttrData ($TargetTypeData->findnodes('attribute')) {
+        my $AttrID = $TargetTypeAttrData->findvalue('id');
         unless ($AttrID) {
-            print "ERROR: Attribute \"id\" is missing for FAPI target: $FAPITargetID in xml\n"
+            print "ERROR: Attribute \"id\" is missing for targettype target: $TargetTypeID in xml\n"
                 if isVerboseReq('E');
             next;
         }
 
         my $attributeData = AttributeData->new();
-        my $isComplex = $FAPITargetAttrData->exists('default/field');
+        my $isComplex = $TargetTypeAttrData->exists('default/field');
 
         if ($isComplex) {
             $attributeData->valueDataType("complexType");
 
-            foreach my $field ($FAPITargetAttrData->findnodes('default/field')) {
+            foreach my $field ($TargetTypeAttrData->findnodes('default/field')) {
                 my $fieldID = $field->findvalue('id');
                 unless ($fieldID) {
                     print "ERROR: Field \"id\" is missing for attribute: $AttrID "
-                        . "for FAPI target: $FAPITargetID in xml\n"
+                        . "for targettype target: $TargetTypeID in xml\n"
                         if isVerboseReq('E');
                     next;
                 }
 
                 my $fieldValue = $field->findvalue('value');
                 print "WARNING: Field \"value\" is missing for field id: $fieldID "
-                    . "in attribute: $AttrID of FAPI target: $FAPITargetID in xml\n"
+                    . "in attribute: $AttrID of targettype target: $TargetTypeID in xml\n"
                     if $fieldValue eq "" and isVerboseReq('W');
 
                 ${ $attributeData->complexFieldValues }{$fieldID} = $fieldValue;
             }
         } else {
             $attributeData->valueDataType("simpleType");
-            $attributeData->value($FAPITargetAttrData->findvalue('default'));
+            $attributeData->value($TargetTypeAttrData->findvalue('default'));
         }
 
-        ${ $fapiTarget->targetAttrList }{$AttrID} = $attributeData;
+        ${ $targetTypeTarget->targetAttrList }{$AttrID} = $attributeData;
     }
 
-    return ($FAPITargetID, $fapiTarget);
+    return ($TargetTypeID, $targetTypeTarget);
 }
 
 # need to return 1 for other modules to include this

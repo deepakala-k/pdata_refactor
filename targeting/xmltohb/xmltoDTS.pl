@@ -3,7 +3,7 @@
 #################################################################################
 #
 #   * This perl script generate device tree structure from intermediate xml
-#     which is contain MRW, FAPI and Non-FAPI targets/attributes.
+#     which is contain TargetInstance, TargetType and Non-TargetType targets/attributes.
 #   * This perl script also support to prepare dts with
 #     required targets and attributes.
 #
@@ -33,8 +33,8 @@ my $myVerbose;
 
 # To store xml data
 my %attributeDefList;
-my %fapiTargetList;
-my %mrwTargetList;
+my %targetTypeList;
+my %targetInstanceList;
 my %pdbgCompPropMapList;
 # Used for dts (device tree structure) generation
 my %headOfDTree;
@@ -71,7 +71,7 @@ if ( $help )
 }
 if ( $inXMLFile eq "" )
 {
-    print "--inXML is required with xml file which should be in MRW format xml with mrw, fapia and non-fapi attributes to generate dts file\n";
+    print "--inXML is required with xml file which should be in TargetInstance format xml with mrw, fapia and non-fapi attributes to generate dts file\n";
     exit 1;
 }
 if ( $dtsFilename eq "")
@@ -99,23 +99,19 @@ sub printUsage
 Description:
 
     *   This tool will generate device tree structure from intermediate xml
-        which is contain MRW, FAPI and Non-FAPI targets/attributes.
+        which is contain TargetInstance, TargetType targets/attributes.
     *   This tool also support to prepare dts with required
         targets and attributes.\n" if $help;
 
     print "
 Usage of $tool:
 
-    -i|--inXML          : [M] :  Used to give intermediate xml name which contain MRW and FAPI
+    -i|--inXML          : [M] :  Used to give intermediate xml name which contain TargetInstance and TargetType
                                  Targets with associated attributes.
                                  E.g.: --inXML <xml_file.xml>
 
     -o|--outDTS         : [M] :  Used to give device tree structure file to stored generated dts                                 data.
                                  E.g.: --outDTS <dts_file.dts>
-
-    -p|--pdbgFile       : [M] :  Used to pass pdbg compatible property map file name
-                                 to map mrw target type in compatible proberty field
-                                 E.g.: --pdbgFile <pdbg_compPropList.lsv>
 
     -f|--filterAttrsFile: [O] :  Used to give required attributes list in lsv file.
                                  E.g. : --filterAttrsFile <systemName_FilterAttrsList.lsv>
@@ -137,7 +133,7 @@ sub main
 {
     initVerbose($myVerbose);
     init();
-    mergeFAPITargetAttrsIntoMRWIfFound();
+    loadTargetTypeDefaultIfNoTargetInstanceDefault();
     prepareDeviceTreeHierarchy();
     createDTSFile();
 }
@@ -145,52 +141,52 @@ sub main
 sub init
 {
 
-    my @ret = getTargetsData($inXMLFile, $filterTgtsFile);
-    %mrwTargetList = %{$ret[0]};
-    %fapiTargetList = %{$ret[1]};
+    my @ret = getTargetInstanceAndTargetTypeData($inXMLFile, $filterTgtsFile);
+    %targetInstanceList = %{$ret[0]};
+    %targetTypeList = %{$ret[1]};
     %attributeDefList = getAttrsDef( $inXMLFile, $filterAttrsFile );
-    my $mrwSize = keys %mrwTargetList;
-    my $fapiSize = keys %fapiTargetList;
+    my $noOfTargetInstance = keys %targetInstanceList;
+    my $noOfTargetType = keys %targetTypeList;
     my $attrsSize = keys %attributeDefList;
-    print "INFO: mrwTgtSize: $mrwSize fapiTgtSize: $fapiSize attrsSize: $attrsSize\n" if isVerboseReq('I');
+    print "INFO: noOfTargetInstance: $noOfTargetInstance noOfTargetType: $noOfTargetType attrsSize: $attrsSize\n" if isVerboseReq('I');
 }
 
-sub mergeFAPITargetAttrsIntoMRWIfFound
+sub loadTargetTypeDefaultIfNoTargetInstanceDefault
 {
-    foreach my $FAPITargetID ( keys %fapiTargetList )
+    foreach my $targetTypeID ( keys %targetTypeList )
     {
         my $found = 0;
-        foreach my $MRWTargetID ( keys %mrwTargetList )
+        foreach my $targetInstanceID ( keys %targetInstanceList )
         {
-            if($FAPITargetID eq $mrwTargetList{$MRWTargetID} -> MRWTarget::targetType)
+            if($targetTypeID eq $targetInstanceList{$targetInstanceID} -> TargetInstance::targetType)
             {
                 $found = 1;
-                my $mrwTarget = $mrwTargetList{$MRWTargetID};
-                my %updMRWTgtAttrsList = %{$mrwTarget->targetAttrList};
-                my %fapiTgtAttrsList = %{$fapiTargetList{$FAPITargetID} -> FAPITarget::targetAttrList};
-                my @sortedKeys = sort { numericalSort($a, $b) } keys %fapiTgtAttrsList;
+                my $targetInstance = $targetInstanceList{$targetInstanceID};
+                my %updatedTargetInstanceAttrsList = %{$targetInstance->targetAttrList};
+                my %targetTypeAttrsList = %{$targetTypeList{$targetTypeID} -> TargetType::targetAttrList};
+                my @sortedKeys = sort { numericalSort($a, $b) } keys %targetTypeAttrsList;
 
-                foreach my $fapiAttr ( @sortedKeys )
+                foreach my $targetTypeAttr ( @sortedKeys )
                 {
-                    if( exists $updMRWTgtAttrsList{$fapiAttr} )
+                    if( exists $updatedTargetInstanceAttrsList{$targetTypeAttr} )
                     {
-                        if ( $updMRWTgtAttrsList{$fapiAttr}-> AttributeData::valueDataType eq "")
+                        if ( $updatedTargetInstanceAttrsList{$targetTypeAttr}-> AttributeData::valueDataType eq "")
                         {
-                            $updMRWTgtAttrsList{$fapiAttr} = $fapiTgtAttrsList{$fapiAttr};
+                            $updatedTargetInstanceAttrsList{$targetTypeAttr} = $targetTypeAttrsList{$targetTypeAttr};
                         }
                     }
                     else
                     {
-                        $updMRWTgtAttrsList{$fapiAttr} = $fapiTgtAttrsList{$fapiAttr};
+                        $updatedTargetInstanceAttrsList{$targetTypeAttr} = $targetTypeAttrsList{$targetTypeAttr};
                     }
                 }
-                $mrwTarget->targetAttrList(\%updMRWTgtAttrsList);
+                $targetInstance->targetAttrList(\%updatedTargetInstanceAttrsList);
             }
         }
 
         if($found eq 1)
         {
-            print "INFO: FAPI target: $FAPITargetID merged with MRW target. Hence removing element from FAPI targets list\n" if isVerboseReq('I');
+            print "INFO: TargetType target: $targetTypeID merged with TargetInstance target. Hence removing element from TargetType targets list\n" if isVerboseReq('I');
         }
     }
 }
@@ -199,44 +195,23 @@ sub prepareDeviceTreeHierarchy
 {
     my %nonPervTgtsList;
     my %omiPervPath;
-    my @sortedKeys = sort { numericalSort($a, $b) } keys %mrwTargetList;
+    my @sortedKeys = sort { numericalSort($a, $b) } keys %targetInstanceList;
     
-    # Prepare for MRW targets
-    foreach my $MRWTargetID ( @sortedKeys)
+    # Prepare for TargetInstance targets
+    foreach my $targetInstanceID ( @sortedKeys)
     {
-        my $attrList = $mrwTargetList{$MRWTargetID}->targetAttrList;
+        my $attrList = $targetInstanceList{$targetInstanceID}->targetAttrList;
 
         if ( !exists ${$attrList}{'AFFINITY_PATH'} )
         {
-            print "CRITICAL: \"AFFINITY_PATH\" attribute is not found for MRW Target : \"$MRWTargetID\". So Ignoring\n" if isVerboseReq('C');
+            print "CRITICAL: \"AFFINITY_PATH\" attribute is not found for TargetInstance Target : \"$targetInstanceID\". So Ignoring\n" if isVerboseReq('C');
             next;
         }
         my $affinityPath = ${$attrList}{'AFFINITY_PATH'}->value;
 
         # Getting path value alone by ignoring "physical:"
         my @hash = split(/\//, substr($affinityPath, index($affinityPath, ':') + 1));
-        processTargetPath($MRWTargetID, \@hash);
-    }
-}
-
-sub addThreadTarget
-{
-    my $procTgtId = $_[0];
-    my $procPath = $_[1];
-
-    my $threadPath = $procPath."/thread-";
-    my $threadTgtId = $procTgtId."thread";
-    my $maxThreads = 4;
-    for(my $i = 0; $i < $maxThreads; $i++)
-    {
-        my $currThreadPath = $threadPath.$i;
-        my $currThreadTgtId = $threadTgtId.$i;
-        my @hash = split(/\//, substr($currThreadPath, index($currThreadPath, ':') + 1));
-        my $threadTgt = MRWTarget->new();
-        $threadTgt->targetType("unit-thread");
-        $threadTgt->targetAttrList({});
-        $mrwTargetList{$currThreadTgtId} = $threadTgt;
-        processTargetPath($currThreadTgtId, \@hash);
+        processTargetPath($targetInstanceID, \@hash);
     }
 }
 
@@ -281,46 +256,6 @@ sub numericalSort {
     }
 }
 
-sub prepareDeviceTreeHierarchyForNonPervTgts
-{
-    my %nonPervTgtsList = %{$_[0]};
-    my %omiTgtPervPathList = %{$_[1]};
-    
-    my @sortedKeys = sort { numericalSort($a, $b) } keys %nonPervTgtsList;
-    
-    foreach my $tgtID (@sortedKeys)
-    {
-        my %targetAttrList = %{$nonPervTgtsList{$tgtID}->targetAttrList};
-        if ( !exists $targetAttrList{"AFFINITY_PATH"} )
-        {
-            print "CRITICAL: \"AFFINITY_PATH\" attribute is not found for MRW Target : \"$tgtID\". So Ignoring to add not pervasive
-            under proc target\n" if isVerboseReq('C');
-            next;
-        }
-
-        my $tgtPath = $targetAttrList{'AFFINITY_PATH'}->value;
-        # First Ignoring affinity: from path then getting till omi path to covert as omi id for getting omi perv path
-        my $omiTgtId = substr( substr($tgtPath, index($tgtPath, ':') + 1), 0, index($tgtPath, 'omi-') - 4);
-        $omiTgtId =~ s/[-\/]//g;
-
-        if ( !exists $omiTgtPervPathList{$omiTgtId} )
-        {
-            print "CRITICAL: \" OMI target id \"$omiTgtId\" is not found to get OMI parv path\n" if isVerboseReq('C');
-            next;
-        }
-
-        my $omiTgtPervPath = $omiTgtPervPathList{$omiTgtId};
-
-        # Getting non pervasive target path alone from AFFINITY_PATH
-        my $nonPervTgtPath = substr($tgtPath, index($tgtPath, 'omi-') + 5, length($tgtPath) - ( index($tgtPath, 'omi-') + 5) );
-        my $nonPervTgtPathWithOMITgtPath = $omiTgtPervPath.$nonPervTgtPath;
-
-        # Getting path value alone by ignoring "physical:"
-        my @hash = split(/\//, substr($nonPervTgtPathWithOMITgtPath, index($nonPervTgtPathWithOMITgtPath, ':') + 1));
-        processTargetPath($tgtID, \@hash);
-    }
-}
-
 sub processTargetPath
 {
     my $TargetID = $_[0];
@@ -338,8 +273,8 @@ sub processTargetPath
         $refDTreeNodesList = \%{ $refDTreeNodesList -> { $key } -> Node::childNodes } ;
     }
     # Assign node member values for the last node based on last key(path name) in thn given path
-    $lastNode->compatible($mrwTargetList{$TargetID} -> MRWTarget::targetType);
-    $lastNode->attributeList($mrwTargetList{$TargetID} -> MRWTarget::targetAttrList);
+    $lastNode->compatible($targetInstanceList{$TargetID} -> TargetInstance::targetType);
+    $lastNode->attributeList($targetInstanceList{$TargetID} -> TargetInstance::targetAttrList);
 
     # Add the reg property for the target if that contains "I2C_ADDRESS"
     # attribute to perform the i2c read and write operation on this target.
@@ -372,7 +307,6 @@ sub createNode
 {
 	my $node = Node->new();
 	$node->nodeName($_[0]);
-    $node->index(substr($node->nodeName, index($node->nodeName, '-') + 1));
     $node->compatible("");
     $node->attributeList({});
     $node->childNodes({});
@@ -406,7 +340,6 @@ sub addNodesIntoDTSFile
 
     my $addDevTreeNode = 1;
     my $addCompProp = 1;
-    my $addIndexProp = 1;
     my @sortedKeys = sort { numericalSort($a, $b) } keys %{$nodes};
 
     foreach my $key ( @sortedKeys)
@@ -421,7 +354,6 @@ sub addNodesIntoDTSFile
         if ( $key =~ m/sys/ or $key =~ m/node/ or $key =~ m/^i2c-/ )
         {
             $addCompProp = 0;
-            $addIndexProp = 0;
         }
 
         my $nodeName = $nodes -> {$key} -> Node::nodeName;
@@ -435,7 +367,7 @@ sub addNodesIntoDTSFile
 
         print {$dtsFHandle} "\n$nodeName {\n" if $addDevTreeNode eq 1;
 
-        addTargetDataIntoDTSFile($nodes->{$key}, $addIndexProp, $addCompProp);
+        addTargetDataIntoDTSFile($nodes->{$key}, $addCompProp);
         addNodesIntoDTSFile($nodes -> {$key} -> Node::childNodes);
 
         print {$dtsFHandle} "};\n" if $addDevTreeNode eq 1;
@@ -445,7 +377,6 @@ sub addNodesIntoDTSFile
 sub addTargetDataIntoDTSFile
 {
     my $devTreeNode = $_[0];
-    my $indexReqToAdd = $_[1];
     my $compPropReqAdd = $_[2];
 
     my %attributeList = %{$devTreeNode->attributeList};
@@ -476,13 +407,6 @@ sub addTargetDataIntoDTSFile
         print {$dtsFHandle} "#size-cells = <$sizeCellsVal>;\n";
     }
 
-    if ($indexReqToAdd eq 1)
-    {
-        # Add index property
-        my $nodeIndexHex = sprintf("<0x%02x>", $devTreeNode->index);
-        print {$dtsFHandle} "index = $nodeIndexHex;\n";
-    }
-
     # because, PHYS_PATH type is class which is not supported in device tree.
     if (exists $attributeList{"PHYS_BIN_PATH"})
     {
@@ -504,12 +428,12 @@ sub addTargetDataIntoDTSFile
             next;
         }
 
-        # Ignoring MRW Target attributes if not found in FAPI list
-        # because, MRW Target having common attributes for all targets but,
+        # Ignoring TargetInstance Target attributes if not found in TargetType list
+        # because, TargetInstance Target having common attributes for all targets but,
         # it may not be required to specific targets.
-        # Ex: Non-FAPI targets having FAPI_POS and REL_POS and those attributes
+        # Ex: Non-TargetType targets having FAPI_POS and REL_POS and those attributes
         # are specific to fapi targets.
-        if ( !exists ${$fapiTargetList{$devTreeNode->compatible}->targetAttrList}{$AttrID} )
+        if ( !exists ${$targetTypeList{$devTreeNode->compatible}->targetAttrList}{$AttrID} )
         {
             next;
         }
@@ -642,7 +566,7 @@ sub addTargetDataIntoDTSFile
                 }
                 else
                 {
-                    # FAPI (ekb) Enum attribute will may have initToZero tag
+                    # TargetType (ekb) Enum attribute will may have initToZero tag
                     # so, default value will be 0
                     $enumVal = $enumName;
                 }
@@ -860,7 +784,7 @@ sub getEnumVal
             }
 
             # Make sure given enum name is enum value as well. Because,
-            # In MRW, there may be chance to use enum value instead enum name
+            # In TargetInstance, there may be chance to use enum value instead enum name
             # for defalut value
             if ( ($enumVal eq "") and ($enumName eq $enumPair->[1]) )
             {

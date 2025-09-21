@@ -104,192 +104,199 @@ sub getAttrsDef {
 }
 
 
-sub parseAttributeDefinition
-{
-    my $attrDef = $_[0];
-    my $inXMLData = $_[1];
+sub parseAttributeDefinition {
+    my ($attrDef, $inXMLData) = @_;
 
     my $attrID = $attrDef->findvalue('id');
-    if ( $attrID eq "" )
-    {
+    if ($attrID eq "") {
         print "CRITICAL: AttributeDef ID missing in xml\n";
-        last;
+        return;
     }
 
-    if ( exists $attributeDefList{$attrID} )
-    {
-        print "WARNING: AttributeDef ID: $attrID is already exists\n";
-        last;
+    if (exists $attributeDefList{$attrID}) {
+        print "WARNING: AttributeDef ID: $attrID already exists\n";
+        return;
     }
 
-    my $attributeDefinition = AttributeDefinition->new(simpleType=> new SimpleType());
+    my $attributeDefinition = AttributeDefinition->new(simpleType => new SimpleType());
 
-    if( $attrDef->exists('nativeType') )
-    {
-        $attributeDefinition->datatype("nativeType");
-
-        my $nativeType = NativeType->new();
-        $nativeType->name($attrDef->findvalue('nativeType/name'));
-        $nativeType->default($attrDef->findvalue('nativeType/default'));
-
-        $attributeDefinition->nativeType($nativeType);
+    if ($attrDef->exists('nativeType')) {
+        _handle_native_type($attributeDefinition, $attrDef);
     }
-    elsif ( $attrDef->exists('complexType') )
-    {
-        $attributeDefinition->datatype("complexType");
-        my $complexType = ComplexType->new();
-        $complexType->arrayDimension($attrDef->findvalue('complexType/array'));
-
-        foreach my $field ( $attrDef->findnodes('complexType/field'))
-        {
-            my $ComplexTypeField = ComplexTypeField->new();
-            $ComplexTypeField->name($field->findvalue('name'));
-            $ComplexTypeField->type($field->findvalue('type'));
-            $ComplexTypeField->default($field->findvalue('default'));
-            $ComplexTypeField->bits($field->findvalue('bits'));
-
-            push(@{$complexType->listOfComplexTypeFields}, $ComplexTypeField);
-        }
-        $attributeDefinition->complexType($complexType);
+    elsif ($attrDef->exists('complexType')) {
+        _handle_complex_type($attributeDefinition, $attrDef);
     }
-    elsif ( $attrDef->exists('simpleType') )
-    {
-        $attributeDefinition->datatype("simpleType");
-        my $SimpleType = SimpleType->new();
-
-        if( $attrDef->exists('simpleType/Target_t') )
-        {
-            $SimpleType->default($attrDef->findvalue('simpleType/Target_t/default'));
-            $SimpleType->DataType("Target_t");
-        }
-        else
-        {
-            my $type = "";
-            if( $attrDef->exists('simpleType/array') )
-            {
-                $type = "array";
-                $SimpleType->arrayDimension($attrDef->findvalue('simpleType/array'));
-                my $strsize = $SimpleType->arrayDimension;
-                $SimpleType->DataType("array");
-            }
-            elsif( $attrDef->exists('simpleType/enumeration') )
-            {
-                $type = "enum";
-                $SimpleType->default($attrDef->findvalue('simpleType/enumeration/default'));
-                $SimpleType->enumId($attrDef->findvalue('simpleType/enumeration/id'));
-                $SimpleType->DataType($type);
-
-                my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$attrID.'\']/ancestor::enumerationType';
-                my $enumDefData = $inXMLData->find($enumDefPath);
-                if ( $enumDefData->size() > 0 )
-                {
-                    $SimpleType->enumDefinition(parseEnumerationTypes($enumDefData));
-                }
-            }
-
-            my $primitivePath = "simpleType/int8_t | simpleType/int16_t | simpleType/int32_t | simpleType/int64_t | ";
-            $primitivePath .= "simpleType/uint8_t | simpleType/uint16_t | simpleType/uint32_t | simpleType/uint64_t | ";
-            $primitivePath .= "simpleType/string";
-
-            my $primitiveType;
-            foreach my $primitiveTypeTag ($attrDef->findnodes($primitivePath))
-            {
-                $primitiveType = $primitiveTypeTag->nodeName;
-                $SimpleType->default($primitiveTypeTag->findvalue('default'));
-            }
-
-            # If attribute type is array then considering primitiveType as array value type
-            if( $type eq "array" )
-            {
-                if ($primitiveType ne "")
-                {
-                    # Checking if array have enum type then enum have primitive type as well so cancat enum plus primitive type
-                    if( $attrDef->exists('simpleType/enumeration') )
-                    {
-                        $primitiveType = "enum_".$primitiveType if $attrDef->exists('simpleType/enumeration');
-                        $SimpleType->default($attrDef->findvalue('simpleType/enumeration/default'));
-                        $SimpleType->enumId($attrDef->findvalue('simpleType/enumeration/id'));
-
-                        my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$attrID.'\']/ancestor::enumerationType';
-                        my $enumDefData = $inXMLData->find($enumDefPath);
-                        if ( $enumDefData->size() > 0 )
-                        {
-                            $SimpleType->enumDefinition(parseEnumerationTypes($enumDefData));
-                        }
-                    }
-                    $SimpleType->subType($primitiveType);
-                    $SimpleType->stringSize($attrDef->findvalue('simpleType/string/sizeInclNull')) if $primitiveType eq "string";;
-                }
-                else
-                {
-                    print "CRITICAL: array value data type is not found for attribute $attrID\n";
-                    last;
-                }
-            }
-            elsif ( $type eq "enum" )
-            {
-                if ($primitiveType ne "")
-                {
-                    $SimpleType->subType($primitiveType);
-                }
-
-                else
-                {
-                    $primitiveType = "uint32_t";
-                    $SimpleType->subType($primitiveType);
-                    print "DEBUG: Using default uint32_t type\n" if isVerboseReq('D');;
-                }
-            }
-            else
-            {
-                if( $primitiveType ne "" )
-                {
-                    $SimpleType->DataType($primitiveType);
-
-                    my $val = $SimpleType->default;
-                    if (defined $val 
-                        && $val ne "" 
-                        && $val !~ /^-?\d+$/ 
-                        && $val !~ /^0x[0-9A-Fa-f]+$/ 
-                        && $primitiveType ne "string")
-                    {
-                        
-                        $SimpleType->enumId($attrDef->findvalue('simpleType/enumeration/id'));
-                        my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$attrID.'\']/ancestor::enumerationType';
-                        my $enumDefData = $inXMLData->find($enumDefPath);
-                        if ( $enumDefData->size() > 0 )
-                        {
-                            my $enumDef = parseEnumerationTypes($enumDefData);
-                            $SimpleType->enumDefinition(parseEnumerationTypes($enumDefData));
-                        }
-                    }
-
-                    $SimpleType->stringSize($attrDef->findvalue('simpleType/string/sizeInclNull')) if $primitiveType eq "string";
-                }
-                else
-                {
-                    print "CRITICAL: Subtype is not found for simpleType of attribute $attrID\n " if isVerboseReq('C');
-                    last;
-                }
-            }
-        }
-
-        if( $SimpleType->default eq "")
-        {
-            $SimpleType->default($attrDef->findvalue('simpleType/default'));
-        }
-        $attributeDefinition->simpleType($SimpleType);
+    elsif ($attrDef->exists('simpleType')) {
+        _handle_simple_type($attributeDefinition, $attrDef, $inXMLData, $attrID);
     }
-    else
-    {
+    else {
         print "CRITICAL: Supported Datatype is not found for attribute $attrID\n";
-        last;
+        return;
     }
 
     print "DEBUG: Attribute: $attrID\n" if isVerboseReq('D');
-
     return ($attrID, $attributeDefinition);
 }
+
+# ----------------------------
+# Helpers
+# ----------------------------
+
+sub _handle_native_type {
+    my ($attributeDefinition, $attrDef) = @_;
+
+    $attributeDefinition->datatype("nativeType");
+
+    my $nativeType = NativeType->new();
+    $nativeType->name($attrDef->findvalue('nativeType/name'));
+    $nativeType->default($attrDef->findvalue('nativeType/default'));
+
+    $attributeDefinition->nativeType($nativeType);
+}
+
+sub _handle_complex_type {
+    my ($attributeDefinition, $attrDef) = @_;
+
+    $attributeDefinition->datatype("complexType");
+    my $complexType = ComplexType->new();
+    $complexType->arrayDimension($attrDef->findvalue('complexType/array'));
+
+    foreach my $field ($attrDef->findnodes('complexType/field')) {
+        my $ComplexTypeField = ComplexTypeField->new();
+        $ComplexTypeField->name($field->findvalue('name'));
+        $ComplexTypeField->type($field->findvalue('type'));
+        $ComplexTypeField->default($field->findvalue('default'));
+        $ComplexTypeField->bits($field->findvalue('bits'));
+        push(@{$complexType->listOfComplexTypeFields}, $ComplexTypeField);
+    }
+
+    $attributeDefinition->complexType($complexType);
+}
+
+sub _handle_simple_type {
+    my ($attributeDefinition, $attrDef, $inXMLData, $attrID) = @_;
+
+    $attributeDefinition->datatype("simpleType");
+    my $SimpleType = SimpleType->new();
+
+    if ($attrDef->exists('simpleType/Target_t')) {
+        $SimpleType->default($attrDef->findvalue('simpleType/Target_t/default'));
+        $SimpleType->DataType("Target_t");
+    }
+    else {
+        my $type = "";
+        if ($attrDef->exists('simpleType/array')) {
+            _handle_array_type($SimpleType, $attrDef, $inXMLData, $attrID);
+            $type = "array";
+        }
+        elsif ($attrDef->exists('simpleType/enumeration')) {
+            _handle_enum_type($SimpleType, $attrDef, $inXMLData, $attrID);
+            $type = "enum";
+        }
+
+        my $primitivePath = join " | ",
+            "simpleType/int8_t", "simpleType/int16_t", "simpleType/int32_t", "simpleType/int64_t",
+            "simpleType/uint8_t", "simpleType/uint16_t", "simpleType/uint32_t", "simpleType/uint64_t",
+            "simpleType/string";
+
+        my $primitiveType;
+        foreach my $primitiveTypeTag ($attrDef->findnodes($primitivePath)) {
+            $primitiveType = $primitiveTypeTag->nodeName;
+            $SimpleType->default($primitiveTypeTag->findvalue('default'));
+        }
+
+        _handle_primitive_type($SimpleType, $attrDef, $inXMLData, $attrID, $type, $primitiveType);
+    }
+
+    if ($SimpleType->default eq "") {
+        $SimpleType->default($attrDef->findvalue('simpleType/default'));
+    }
+
+    $attributeDefinition->simpleType($SimpleType);
+}
+
+sub _handle_array_type {
+    my ($SimpleType, $attrDef, $inXMLData, $attrID) = @_;
+    $SimpleType->arrayDimension($attrDef->findvalue('simpleType/array'));
+    $SimpleType->DataType("array");
+}
+
+sub _handle_enum_type {
+    my ($SimpleType, $attrDef, $inXMLData, $attrID) = @_;
+
+    $SimpleType->default($attrDef->findvalue('simpleType/enumeration/default'));
+    $SimpleType->enumId($attrDef->findvalue('simpleType/enumeration/id'));
+    $SimpleType->DataType("enum");
+
+    my $enumDefPath = "/attributes/enumerationType/id[text()='$attrID']/ancestor::enumerationType";
+    my $enumDefData = $inXMLData->find($enumDefPath);
+    if ($enumDefData->size() > 0) {
+        $SimpleType->enumDefinition(parseEnumerationTypes($enumDefData));
+    }
+}
+
+sub _handle_primitive_type {
+    my ($SimpleType, $attrDef, $inXMLData, $attrID, $type, $primitiveType) = @_;
+
+    if ($type eq "array") {
+        if ($primitiveType ne "") {
+            if ($attrDef->exists('simpleType/enumeration')) {
+                $primitiveType = "enum_$primitiveType";
+                $SimpleType->default($attrDef->findvalue('simpleType/enumeration/default'));
+                $SimpleType->enumId($attrDef->findvalue('simpleType/enumeration/id'));
+
+                my $enumDefPath = "/attributes/enumerationType/id[text()='$attrID']/ancestor::enumerationType";
+                my $enumDefData = $inXMLData->find($enumDefPath);
+                if ($enumDefData->size() > 0) {
+                    $SimpleType->enumDefinition(parseEnumerationTypes($enumDefData));
+                }
+            }
+            $SimpleType->subType($primitiveType);
+            $SimpleType->stringSize($attrDef->findvalue('simpleType/string/sizeInclNull')) if $primitiveType eq "string";
+        }
+        else {
+            print "CRITICAL: array value data type is not found for attribute $attrID\n";
+            return;
+        }
+    }
+    elsif ($type eq "enum") {
+        if ($primitiveType ne "") {
+            $SimpleType->subType($primitiveType);
+        }
+        else {
+            $primitiveType = "uint32_t";
+            $SimpleType->subType($primitiveType);
+            print "DEBUG: Using default uint32_t type\n" if isVerboseReq('D');
+        }
+    }
+    else {
+        if ($primitiveType ne "") {
+            $SimpleType->DataType($primitiveType);
+
+            # TODO remove it
+            # my $val = $SimpleType->default;
+            # if (defined $val && $val ne "" &&
+            #     $val !~ /^-?\d+$/ &&
+            #     $val !~ /^0x[0-9A-Fa-f]+$/ &&
+            #     $primitiveType ne "string") {
+
+            #     $SimpleType->enumId($attrDef->findvalue('simpleType/enumeration/id'));
+            #     my $enumDefPath = "/attributes/enumerationType/id[text()='$attrID']/ancestor::enumerationType";
+            #     my $enumDefData = $inXMLData->find($enumDefPath);
+            #     if ($enumDefData->size() > 0) {
+            #         $SimpleType->enumDefinition(parseEnumerationTypes($enumDefData));
+            #     }
+            # }
+
+            $SimpleType->stringSize($attrDef->findvalue('simpleType/string/sizeInclNull')) if $primitiveType eq "string";
+        }
+        else {
+            print "CRITICAL: Subtype is not found for simpleType of attribute $attrID\n" if isVerboseReq('C');
+            return;
+        }
+    }
+}
+
 
 sub parseEnumerationTypes
 {
@@ -340,14 +347,14 @@ sub parseEnumerationTypes
 
 # Preparing struct type for MRW targets
 
-struct MRWTarget => {
+struct TargetInstance => {
     targetType          => '$',
     targetAttrList      => '%',
 };
 
 # Preparing struct type for FAPI targets
 
-struct FAPITarget => {
+struct TargetType => {
     targetParent        => '$',
     targetAttrList      => '%',
 };
@@ -359,15 +366,15 @@ struct AttributeData => {
     complexFieldValues     => '%',
 };
 
-sub getTargetsData
+sub getTargetInstanceAndTargetTypeData
 {
     my $inXMLFile = $_[0];
     my $filterFile = $_[1];
 
     my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
 
-    my %mrwTargetList;
-    my %fapiTargetList;
+    my %targetInstanceList;
+    my %targetTypeList;
 
     if( $filterFile ne "" )
     {
@@ -376,15 +383,15 @@ sub getTargetsData
         foreach my $rTgt ( sort ( keys %reqTgtsList) )
         {
             # Parse MRW Targets
-            my $mrwTgtPath = '/attributes/targetInstance/type[text()=\''.$rTgt.'\']/ancestor::targetInstance';
-            my $mrwTgtData = $inXMLData->findnodes($mrwTgtPath);
+            my $TargetInstanceTgtPath = '/attributes/targetInstance/type[text()=\''.$rTgt.'\']/ancestor::targetInstance';
+            my $targetInstanceTargetData = $inXMLData->findnodes($TargetInstanceTgtPath);
 
-            if ( $mrwTgtData->size() > 0 )
+            if ( $targetInstanceTargetData->size() > 0 )
             {
-                foreach my $MRWTargetData ($mrwTgtData->get_nodelist)
+                foreach my $eachTargetInstanceData ($targetInstanceTargetData->get_nodelist)
                 {
-                    @ret = parseMRWTargetsData($MRWTargetData);
-                    $mrwTargetList{$ret[0]} = $ret[1];
+                    @ret = parseTargetInstanceData($eachTargetInstanceData);
+                    $targetInstanceList{$ret[0]} = $ret[1];
                 }
             }
             else
@@ -393,158 +400,169 @@ sub getTargetsData
             }
 
             # Parse FAPI Targets
-            my $fapiTgtPath = '/attributes/targetType/id[text()=\''.$rTgt.'\']/ancestor::targetType';
-            my $fapiTgtData = $inXMLData->findnodes($fapiTgtPath);
-            if ($fapiTgtData->size() > 0 )
+            my $targetTypeTargetPath = '/attributes/targetType/id[text()=\''.$rTgt.'\']/ancestor::targetType';
+            my $targetTypeTargetData = $inXMLData->findnodes($targetTypeTargetPath);
+            if ($targetTypeTargetData->size() > 0 )
             {
-                foreach my $FAPITargetData ($fapiTgtData->get_nodelist)
+                foreach my $TargetTypeData ($targetTypeTargetData->get_nodelist)
                 {
-                    my @ret = parseFAPITargetsData($FAPITargetData);
-                    $fapiTargetList{$ret[0]} = $ret[1];
+                    my @ret = parseTargetTypeData($TargetTypeData);
+                    $targetTypeList{$ret[0]} = $ret[1];
                 }
             }
         }
     }
     else # Parse all MRW and FAPI targets from xml if required targets list doesn't given
     {
-        my $mrwTgtPath = '/attributes/targetInstance';
-        foreach my $mrwTgtData ( $inXMLData->findnodes($mrwTgtPath) )
+        my $TargetInstanceTgtPath = '/attributes/targetInstance';
+        foreach my $targetInstanceTargetData ( $inXMLData->findnodes($TargetInstanceTgtPath) )
         {
-            @ret = parseMRWTargetsData($mrwTgtData);
-            $mrwTargetList{$ret[0]} = $ret[1];
+            @ret = parseTargetInstanceData($targetInstanceTargetData);
+            $targetInstanceList{$ret[0]} = $ret[1];
         }
 
-        my $fapiTgtPath = '/attributes/targetType';
-        foreach my $fapiTgtData ( $inXMLData->findnodes($fapiTgtPath) )
+        my $targetTypeTargetPath = '/attributes/targetType';
+        foreach my $targetTypeTargetData ( $inXMLData->findnodes($targetTypeTargetPath) )
         {
-            my @ret = parseFAPITargetsData($fapiTgtData);
-            $fapiTargetList{$ret[0]} = $ret[1];
+            my @ret = parseTargetTypeData($targetTypeTargetData);
+            $targetTypeList{$ret[0]} = $ret[1];
         }
     }
 
-    return (\%mrwTargetList, \%fapiTargetList);
+    return (\%targetInstanceList, \%targetTypeList);
 }
 
-sub parseMRWTargetsData
-{
-    my $MRWTargetData = $_[0];
+sub parseTargetInstanceData {
+    my ($eachTargetInstanceData) = @_;
 
-    my $MRWTargetID = $MRWTargetData->findvalue('id');
-    if( $MRWTargetID eq "")
-    {
+    my $MRWTargetID = $eachTargetInstanceData->findvalue('id');
+    unless ($MRWTargetID) {
         print "CRITICAL: Target \"id\" is missing for MRW target in xml\n" if isVerboseReq('C');
-        last;
+        return;
     }
 
-    my $mrwTarget = MRWTarget->new();
-    $mrwTarget->targetType($MRWTargetData->findvalue('type'));
-    if( $mrwTarget->targetType eq "")
-    {
+    my $targetType = $eachTargetInstanceData->findvalue('type');
+    unless ($targetType) {
         print "CRITICAL: Target \"type\" is missing for MRW target: $MRWTargetID in xml\n" if isVerboseReq('C');
-        last;
+        return;
     }
 
-    foreach my $MRWTargetAttrData ($MRWTargetData->findnodes('attribute'))
-    {
+    my $mrwTarget = TargetInstance->new(targetType => $targetType);
+
+    foreach my $MRWTargetAttrData ($eachTargetInstanceData->findnodes('attribute')) {
         my $AttrID = $MRWTargetAttrData->findvalue('id');
-        if( $AttrID eq "")
-        {
+        unless ($AttrID) {
             print "ERROR: Attribute \"id\" is missing for MRW target: $MRWTargetID in xml\n";
             next;
         }
 
-        my $attributeData = AttributeData->new();
-        if( $MRWTargetAttrData->exists('default/field') ) # Complex type attribute
-        {
-            $attributeData->valueDataType("complexType");
-            foreach my $field ( $MRWTargetAttrData->findnodes('default/field'))
-            {
-                my $fieldID = $field->findvalue('id');
-                if( $fieldID eq "")
-                {
-                    print "CRITICAL: Field \"id\" is missing for complex attribute $AttrID for MRW target: $MRWTargetID in xml\n" if isVerboseReq('C');
-                    next;
-                }
+        my $attributeData;
+        if ($MRWTargetAttrData->exists('default/field')) {
+            $attributeData = _parse_complex_attribute($MRWTargetID, $AttrID, $MRWTargetAttrData);
+        } else {
+            $attributeData = _parse_simple_attribute($MRWTargetAttrData);
+        }
 
-                my $fieldValue = $field->findvalue('value');
-                if( $fieldValue eq "")
-                {
-                    print "WARNING: Field \"value\" is missing to field id: $fieldID for attribute: $AttrID of MRW target: $MRWTargetID in xml\n" if isVerboseReq('W');
-                }
-                ${$attributeData->complexFieldValues}{$fieldID} = $fieldValue;
-            }
-            ${$mrwTarget->targetAttrList}{$AttrID} = $attributeData;
-        }
-        else
-        {
-            $attributeData->valueDataType("simpleType");
-            $attributeData->value($MRWTargetAttrData->findvalue('default'));
-            ${$mrwTarget->targetAttrList}{$AttrID} = $attributeData;
-            my $value = $MRWTargetAttrData->findvalue('default');
-        }
+        ${ $mrwTarget->targetAttrList }{$AttrID} = $attributeData if $attributeData;
     }
 
-    return ( $MRWTargetID, $mrwTarget);
+    return ($MRWTargetID, $mrwTarget);
 }
 
-sub parseFAPITargetsData
-{
-    my $FAPITargetData = $_[0];
+# ----------------------------
+# Helpers
+# ----------------------------
 
-    my $FAPITargetID = $FAPITargetData->findvalue('id');
-    if( $FAPITargetID eq "")
-    {
+sub _parse_complex_attribute {
+    my ($MRWTargetID, $AttrID, $MRWTargetAttrData) = @_;
+
+    my $attributeData = AttributeData->new(valueDataType => "complexType");
+
+    foreach my $field ($MRWTargetAttrData->findnodes('default/field')) {
+        my $fieldID = $field->findvalue('id');
+        unless ($fieldID) {
+            print "CRITICAL: Field \"id\" is missing for complex attribute $AttrID of MRW target: $MRWTargetID in xml\n"
+              if isVerboseReq('C');
+            next;
+        }
+
+        my $fieldValue = $field->findvalue('value');
+        unless ($fieldValue) {
+            print "WARNING: Field \"value\" is missing for field id: $fieldID in attribute: $AttrID of MRW target: $MRWTargetID\n"
+              if isVerboseReq('W');
+        }
+
+        ${ $attributeData->complexFieldValues }{$fieldID} = $fieldValue;
+    }
+
+    return $attributeData;
+}
+
+sub _parse_simple_attribute {
+    my ($MRWTargetAttrData) = @_;
+
+    my $attributeData = AttributeData->new(valueDataType => "simpleType");
+    $attributeData->value($MRWTargetAttrData->findvalue('default'));
+
+    return $attributeData;
+}
+
+
+sub parseTargetTypeData {
+    my ($TargetTypeData) = @_;
+
+    my $FAPITargetID = $TargetTypeData->findvalue('id');
+    unless ($FAPITargetID) {
         print "CRITICAL: FAPI target \"id\" is missing in xml\n" if isVerboseReq('C');
-        last;
-    }
-    my $fapiTarget = FAPITarget->new();
-
-    $fapiTarget->targetParent($FAPITargetData->findvalue('parent'));
-    if( $fapiTarget->targetParent eq "" and $FAPITargetID ne "base")
-    {
-        print "ERROR: Parent \"value\" is missing for FAPI target: $FAPITargetID in xml\n" if isVerboseReq('E');
-        # TODO: Need uncomment below line once common plats xml used. To add fapi targets commenting because plat specific xml doesn't contains all targets, so parent tag may not present for fapi targets which is not in plat xml.
-        #last;
+        return; # use return instead of last
     }
 
-    foreach my $FAPITargetAttrData ($FAPITargetData->findnodes('attribute'))
-    {
+    my $fapiTarget = TargetType->new();
+    $fapiTarget->targetParent($TargetTypeData->findvalue('parent'));
+
+    if ($fapiTarget->targetParent eq "" and $FAPITargetID ne "base") {
+        print "ERROR: Parent \"value\" is missing for FAPI target: $FAPITargetID in xml\n"
+            if isVerboseReq('E');
+        # TODO: Uncomment return when common plats xml is used
+        # return;
+    }
+
+    foreach my $FAPITargetAttrData ($TargetTypeData->findnodes('attribute')) {
         my $AttrID = $FAPITargetAttrData->findvalue('id');
-        if( $AttrID eq "")
-        {
-            print "ERROR: Attribute \"id\" is missing for FAPI target: $FAPITargetID in xml\n" if isVerboseReq('E');
+        unless ($AttrID) {
+            print "ERROR: Attribute \"id\" is missing for FAPI target: $FAPITargetID in xml\n"
+                if isVerboseReq('E');
             next;
         }
 
         my $attributeData = AttributeData->new();
-        if( $FAPITargetAttrData->exists('default/field') ) # Complex type attribute
-        {
+        my $isComplex = $FAPITargetAttrData->exists('default/field');
+
+        if ($isComplex) {
             $attributeData->valueDataType("complexType");
-            foreach my $field ( $FAPITargetAttrData->findnodes('default/field'))
-            {
+
+            foreach my $field ($FAPITargetAttrData->findnodes('default/field')) {
                 my $fieldID = $field->findvalue('id');
-                if( $fieldID eq "")
-                {
-                    print "ERROR: Field \"id\" is missing for attribute: $AttrID for FAPI target: $FAPITargetID in xml\n" if isVerboseReq('E');
+                unless ($fieldID) {
+                    print "ERROR: Field \"id\" is missing for attribute: $AttrID "
+                        . "for FAPI target: $FAPITargetID in xml\n"
+                        if isVerboseReq('E');
                     next;
                 }
 
                 my $fieldValue = $field->findvalue('value');
-                if( $fieldValue eq "")
-                {
-                    print "WARNING: Field \"value\" is missing to field id: $fieldID for attribute: $AttrID of FAPI target: $FAPITargetID in xml\n" if isVerboseReq('W');
-                }
-                ${$attributeData->complexFieldValues}{$fieldID} = $fieldValue;
+                print "WARNING: Field \"value\" is missing for field id: $fieldID "
+                    . "in attribute: $AttrID of FAPI target: $FAPITargetID in xml\n"
+                    if $fieldValue eq "" and isVerboseReq('W');
+
+                ${ $attributeData->complexFieldValues }{$fieldID} = $fieldValue;
             }
-            ${$fapiTarget->targetAttrList}{$AttrID} = $attributeData;
-        }
-        else
-        {
+        } else {
             $attributeData->valueDataType("simpleType");
             $attributeData->value($FAPITargetAttrData->findvalue('default'));
-            ${$fapiTarget->targetAttrList}{$AttrID} = $attributeData;
-            my $value = $FAPITargetAttrData->findvalue('default');
         }
+
+        ${ $fapiTarget->targetAttrList }{$AttrID} = $attributeData;
     }
 
     return ($FAPITargetID, $fapiTarget);

@@ -367,287 +367,170 @@ sub addNodesIntoDTSFile
     }
 }
 
-sub addTargetDataIntoDTSFile
-{
-    my $devTreeNode = $_[0];
-    my $compPropReqAdd = $_[2];
+# Main function
+sub addTargetDataIntoDTSFile {
+    my ($devTreeNode, $compPropReqAdd) = @_;
 
     my %attributeList = %{$devTreeNode->attributeList};
 
-    # Add "compatible" property
-    my $pdbgCompPropertyVal = "\"".$devTreeNode->compatible."\"";
+    # Add basic properties
+    addBasicProperties($devTreeNode);
 
-    print {$dtsFHandle} "compatible = $pdbgCompPropertyVal;\n" if $pdbgCompPropertyVal ne "\"\""; # not adding empty
+    # Convert PHYS_PATH and AFFINITY_PATH attributes
+    handleSpecialAttributes(\%attributeList);
 
-    if ($devTreeNode->reg ne "")
-    {
-        # Add reg property
-        my $regPropVal = $devTreeNode->reg;
-        print {$dtsFHandle} "reg = <$regPropVal>;\n";
-    }
-
-    if ($devTreeNode->address_cells ne "")
-    {
-        # Add "#address-cells" property
-        my $addrCellsVal = $devTreeNode->address_cells;
-        print {$dtsFHandle} "#address-cells = <$addrCellsVal>;\n";
-    }
-
-    if ($devTreeNode->size_cells ne "")
-    {
-        # Add "#size-cells" property
-        my $sizeCellsVal = $devTreeNode->size_cells;
-        print {$dtsFHandle} "#size-cells = <$sizeCellsVal>;\n";
-    }
-
-    # because, PHYS_PATH type is class which is not supported in device tree.
-    if (exists $attributeList{"PHYS_BIN_PATH"})
-    {
-        $attributeList{"PHYS_BIN_PATH"}->value(getBinaryFormatForPath($attributeList{"PHYS_PATH"}->value, "PHYS_BIN_PATH"));
-    }
-
-    if (exists $attributeList{"AFFINITY_BIN_PATH"})
-    {
-        $attributeList{"AFFINITY_BIN_PATH"}->value(getBinaryFormatForPath($attributeList{"AFFINITY_PATH"}->value, "AFFINITY_BIN_PATH"));
-    }
-
-    # Attributes
-    my @sortedKeys = sort { numericalSort($a, $b) } keys %attributeList;
-    foreach my $AttrID ( @sortedKeys )
-    {
+    # Process each attribute
+    foreach my $AttrID (sort { numericalSort($a, $b) } keys %attributeList) {
         my $attrType = getAttributeType($AttrID);
-        if ( $attrType eq "")
-        {
-            next;
-        }
+        next if $attrType eq "";
 
-        # Ignoring TargetInstance Target attributes if not found in TargetType list
-        # because, TargetInstance Target having common attributes for all targets but,
-        # it may not be required to specific targets.
-        # Ex: Non-TargetType targets having FAPI_POS and REL_POS and those attributes
-        # are specific to fapi targets.
-        if ( !exists ${$targetTypeList{$devTreeNode->compatible}->targetAttrList}{$AttrID} )
-        {
-            next;
-        }
+        # Skip if attribute not part of targetType
+        next unless exists ${$targetTypeList{$devTreeNode->compatible}->targetAttrList}{$AttrID};
 
-        if ($attrType eq "simpleType")
-        {
-            my $attrVal = $attributeList{$AttrID} -> AttributeData::value;
+        if ($attrType eq "simpleType") {
+            my $attrVal = $attributeList{$AttrID}->AttributeData::value;
+            my $simpleType = $attributeDefList{$AttrID}->AttributeDefinition::simpleType;
 
-            # Getting default value from attribute definition if not value is defined
-            my $simpleType = $attributeDefList{$AttrID}-> AttributeDefinition::simpleType;
-            my $simpleTypeDefault = $simpleType->default;
-            $attrVal = $simpleTypeDefault if $attrVal eq "";
+            # Fill default value if not defined
+            $attrVal = $simpleType->default if $attrVal eq "";
 
-            my $isToolAddedDefVal = 0;
-            if ( $attrVal eq "" )
-            {
-                $attrVal = 0;
-                $isToolAddedDefVal = 1;
+            # Dispatch to subtype handler
+            if ($simpleType->DataType eq "array") {
+                handleArrayType($AttrID, $attrVal, $simpleType);
             }
-            if( $simpleType->DataType eq "array")
-            {
-                my $eleCnt = 1;
-                my @dims = split(/,/, $simpleType->arrayDimension);
-                foreach my $dim (@dims)
-                {
-                    $eleCnt *= $dim;
-                }
-
-                my @arrayValues;
-                if ( $simpleType->subType eq "string" )
-                {
-                    (@arrayValues) = $attrVal =~ m/"(.*?)"/g;
-                }
-                elsif( index($simpleType->subType, "enum_") != -1)
-                {
-                    # Resetting value as empty if tool is initialized to get enum value from enum definition
-                    $attrVal = "" if $isToolAddedDefVal eq 1;
-                    my $enumNames = $attrVal if $attrVal ne "";
-
-                    # Getting default value from enum definition if value is not defined
-                    my $enumDef = $simpleType->enumDefinition;
-                    $enumNames = $enumDef->default if $enumNames eq "";
-
-                    @arrayValues = split(/,/,$enumNames);
-                    foreach my $enumName (@arrayValues)
-                    {
-                        # Getting enum value from enum name
-                        my $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $enumName);
-
-                        # Setting first enum value as default value if not found
-                        $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
-                        # Replacing enum name with value
-                        $enumName = $enumVal;
-                    }
-                }
-                else
-                {
-                    @arrayValues = split(/,/,$attrVal);
-                    foreach my $arrVal (@arrayValues)
-                    {
-                        if (defined $arrVal 
-                            && $arrVal ne "" 
-                            && $arrVal !~ /^-?\d+$/ 
-                            && $arrVal !~ /^0x[0-9A-Fa-f]+$/ )
-                        {
-                            #################
-                            $simpleType->enumId($AttrID);
-                            my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
-                            my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
-                            my $enumDefData = $inXMLData->find($enumDefPath);
-                            if ( $enumDefData->size() > 0 )
-                            {
-                                my $enumDef = parseEnumerationTypes($enumDefData);
-                                $simpleType->enumDefinition(parseEnumerationTypes($enumDefData));
-                            }
-                            #######################
-
-                            my $enumName = $arrVal if $arrVal ne "";
-
-                            # Getting default value from enum definition if value is not defined
-                            my $enumDef = $simpleType->enumDefinition;
-                            $enumName = $enumDef->default if $enumName eq "";
-
-                            my $enumVal;
-                            if ($enumName ne "0")
-                            {
-                                # Getting enum value from enum name
-                                $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $enumName);
-
-                                # Setting first enum value as default value,
-                                $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
-                            }
-                            else
-                            {
-                                $enumVal = $enumName;
-                            }
-                            $arrVal = $enumVal;
-                        }
-                    }
-
-                }
-
-                # Adding 0 for non available value for array element count
-                my $arrayValuesSize = @arrayValues;
-                for ( my $i = $arrayValuesSize; $i < $eleCnt; $i++)
-                {
-                    push(@arrayValues, 0)
-                }
-                setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType."_".$simpleType->subType, \@arrayValues, $eleCnt)
+            elsif ($simpleType->DataType eq "enum") {
+                handleEnumType($AttrID, $attrVal, $simpleType);
             }
-            elsif ( $simpleType->DataType eq "enum")
-            {
-                # Resetting value as empty if tool is initialized to get enum value from enum definition
-                $attrVal = "" if $isToolAddedDefVal eq 1;
-
-                my $enumName = $attrVal if $attrVal ne "";
-
-                # Getting default value from enum definition if value is not defined
-                my $enumDef = $simpleType->enumDefinition;
-                $enumName = $enumDef->default if $enumName eq "";
-
-                my $enumVal;
-                if ($enumName ne "0")
-                {
-                    # Getting enum value from enum name
-                    $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $enumName);
-
-                    # Setting first enum value as default value,
-                    $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
-                }
-                else
-                {
-                    # TargetType (ekb) Enum attribute will may have initToZero tag
-                    # so, default value will be 0
-                    $enumVal = $enumName;
-                }
-
-                my @arrayValues;
-                push(@arrayValues, $enumVal);
-                setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType."_".$simpleType->subType, \@arrayValues, 1)
+            elsif ($simpleType->DataType eq "string") {
+                handleStringType($AttrID, $attrVal, $simpleType);
             }
-            elsif ( $simpleType->DataType eq "string")
-            {
-                # Reducing one byte from size to exclude NULL
-                # because dtc will add null for string type
-                my $size = ($simpleType->stringSize) - 1;
-                my $strAttrVal = pack("Z$size", $attrVal);
-                my @arrayValues;
-                push(@arrayValues, $strAttrVal);
-                setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, \@arrayValues, 1)
-            }
-            elsif ( $simpleType->DataType eq "int8_t" or $simpleType->DataType eq "int16_t" or $simpleType->DataType eq "int32_t"  or $simpleType->DataType eq "int64_t" or 
-                $simpleType->DataType eq "uint8_t" or $simpleType->DataType eq "uint16_t" or $simpleType->DataType eq "uint32_t"  or $simpleType->DataType eq "uint64_t")
-            {
-                my @arrayValues;
-                    
-                if ( $attrVal eq 'true' )
-                {
-                    $attrVal = 1;
-                }
-                elsif ( $attrVal eq 'false' )
-                {
-                    $attrVal = 0;
-                }
-                if (defined $attrVal 
-                        && $attrVal ne "" 
-                        && $attrVal !~ /^-?\d+$/ 
-                        && $attrVal !~ /^0x[0-9A-Fa-f]+$/ )
-                {
-                    #################
-                    $simpleType->enumId($AttrID);
-                    my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
-                    my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
-                    my $enumDefData = $inXMLData->find($enumDefPath);
-                    if ( $enumDefData->size() > 0 )
-                    {
-                        my $enumDef = parseEnumerationTypes($enumDefData);
-                        $simpleType->enumDefinition(parseEnumerationTypes($enumDefData));
-                    }
-                    #######################
-
-                    my $enumName = $attrVal if $attrVal ne "";
-
-                    # Getting default value from enum definition if value is not defined
-                    my $enumDef = $simpleType->enumDefinition;
-                    $enumName = $enumDef->default if $enumName eq "";
-
-                    my $enumVal;
-                    if ($enumName ne "0")
-                    {
-                        # Getting enum value from enum name
-                        $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $enumName);
-
-                        # Setting first enum value as default value,
-                        $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
-                    }
-                    else
-                    {
-                        $enumVal = $enumName;
-                    }
-                    $attrVal = $enumVal;
-                }
-
-
-                push(@arrayValues, $attrVal);
-                setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, \@arrayValues, 1)
+            else { # numeric types
+                handleNumericType($AttrID, $attrVal, $simpleType);
             }
         }
-        elsif ( $attrType eq "complexType" )
-        {
-            my $attrValue = $attributeList{$AttrID} -> AttributeData::value;
-
-            if ($attrValue eq "")
-            {
-                my @ret = getSpecAndDefValForComplexTypeAttr(\@{$attributeDefList{$AttrID}->complexType->listOfComplexTypeFields}, $attributeDefList{$AttrID}->complexType->arrayDimension);
-                $attrValue = @ret[1];
-            }
-            my $dtsFormatedVal = "[".$attrValue." ]";
-            print {$dtsFHandle} "$attrPrefix$AttrID = $dtsFormatedVal;\n";
+        elsif ($attrType eq "complexType") {
+            handleComplexType($AttrID, $attributeList{$AttrID}->AttributeData::value);
         }
     }
+}
+
+# Add basic device tree node properties
+sub addBasicProperties {
+    my ($devTreeNode) = @_;
+
+    print {$dtsFHandle} "compatible = \"$devTreeNode->{compatible}\";\n" if $devTreeNode->{compatible} ne "";
+    print {$dtsFHandle} "reg = <$devTreeNode->{reg}>;\n" if $devTreeNode->{reg} ne "";
+    print {$dtsFHandle} "#address-cells = <$devTreeNode->{address_cells}>;\n" if $devTreeNode->{address_cells} ne "";
+    print {$dtsFHandle} "#size-cells = <$devTreeNode->{size_cells}>;\n" if $devTreeNode->{size_cells} ne "";
+}
+
+# Handle PHYS_PATH and AFFINITY_PATH
+sub handleSpecialAttributes {
+    my ($attrListRef) = @_;
+    if (exists $attrListRef->{"PHYS_BIN_PATH"}) {
+        $attrListRef->{"PHYS_BIN_PATH"}->value(getBinaryFormatForPath($attrListRef->{"PHYS_PATH"}->value, "PHYS_BIN_PATH"));
+    }
+    if (exists $attrListRef->{"AFFINITY_BIN_PATH"}) {
+        $attrListRef->{"AFFINITY_BIN_PATH"}->value(getBinaryFormatForPath($attrListRef->{"AFFINITY_PATH"}->value, "AFFINITY_BIN_PATH"));
+    }
+}
+
+# SimpleType handlers
+sub handleArrayType {
+    my ($AttrID, $attrVal, $simpleType) = @_;
+
+    my $eleCnt = 1;
+    my @dims = split(/,/, $simpleType->arrayDimension);
+    $eleCnt *= $_ foreach @dims;
+
+    my @arrayValues;
+
+    if ($simpleType->subType eq "string") {
+        (@arrayValues) = $attrVal =~ m/"(.*?)"/g;
+    }
+    elsif (index($simpleType->subType, "enum_") != -1) {
+        my $enumNames = $attrVal ne "" ? $attrVal : $simpleType->enumDefinition->default;
+        @arrayValues = split(/,/, $enumNames);
+        foreach my $enumName (@arrayValues) {
+            my $enumVal = getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, $enumName);
+            $enumVal = getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, "") if $enumVal eq "";
+            $enumName = $enumVal;
+        }
+    }
+    else {
+        @arrayValues = split(/,/, $attrVal);
+        # Convert enum-like string values if necessary
+        foreach my $arrVal (@arrayValues) {
+            if (defined $arrVal && $arrVal !~ /^-?\d+$/ && $arrVal !~ /^0x[0-9A-Fa-f]+$/ && $arrVal ne "") {
+                # Fill from enum if exists
+                my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
+                my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
+                my $enumDefData = $inXMLData->find($enumDefPath);
+                if ($enumDefData->size() > 0) {
+                    my $enumDef = parseEnumerationTypes($enumDefData);
+                    $simpleType->enumDefinition($enumDef);
+                    my $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $arrVal);
+                    $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
+                    $arrVal = $enumVal;
+                }
+            }
+        }
+    }
+
+    # Pad missing elements with 0
+    push @arrayValues, (0) x ($eleCnt - @arrayValues) if @arrayValues < $eleCnt;
+
+    setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType."_".$simpleType->subType, \@arrayValues, $eleCnt);
+}
+
+sub handleEnumType {
+    my ($AttrID, $attrVal, $simpleType) = @_;
+
+    my $enumName = $attrVal ne "" ? $attrVal : $simpleType->enumDefinition->default;
+    my $enumVal = $enumName ne "0" ? getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, $enumName) : $enumName;
+    $enumVal = getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, "") if $enumVal eq "";
+
+    setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType."_".$simpleType->subType, [$enumVal], 1);
+}
+
+sub handleStringType {
+    my ($AttrID, $attrVal, $simpleType) = @_;
+    my $size = $simpleType->stringSize - 1;
+    my $strAttrVal = pack("Z$size", $attrVal);
+    setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, [$strAttrVal], 1);
+}
+
+sub handleNumericType {
+    my ($AttrID, $attrVal, $simpleType) = @_;
+    my $val = $attrVal eq 'true' ? 1 : $attrVal eq 'false' ? 0 : $attrVal;
+
+    if (defined $val && $val ne "" && $val !~ /^-?\d+$/ && $val !~ /^0x[0-9A-Fa-f]+$/) {
+        # Handle enum fallback
+        my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
+        my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
+        my $enumDefData = $inXMLData->find($enumDefPath);
+        if ($enumDefData->size() > 0) {
+            my $enumDef = parseEnumerationTypes($enumDefData);
+            $simpleType->enumDefinition($enumDef);
+            my $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $val);
+            $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
+            $val = $enumVal;
+        }
+    }
+
+    setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, [$val], 1);
+}
+
+sub handleComplexType {
+    my ($AttrID, $attrValue) = @_;
+    if ($attrValue eq "") {
+        my @ret = getSpecAndDefValForComplexTypeAttr(
+            \@{$attributeDefList{$AttrID}->complexType->listOfComplexTypeFields},
+            $attributeDefList{$AttrID}->complexType->arrayDimension
+        );
+        $attrValue = $ret[1];
+    }
+    print {$dtsFHandle} "$attrPrefix$AttrID = [$attrValue ];\n";
 }
 
 sub getAttributeType

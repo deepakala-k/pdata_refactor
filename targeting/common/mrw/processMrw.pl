@@ -3030,13 +3030,9 @@ sub setCommonAttrForChiplet
 
     if ($pervasive_parent ne "")
     {
-        # Special case: FC does not have a PARENT_PERVASIVE
-        if ($targetType ne "FC")
-        {
-            my $perv_parent_val =
-                "physical:sys-$sysPos/node-$nodePos/proc-$procPos/perv-$pervasive_parent";
-            $targetObj->setAttribute($target, "PARENT_PERVASIVE", $perv_parent_val);
-        }
+        my $perv_parent_val =
+            "physical:sys-$sysPos/node-$nodePos/proc-$procPos/perv-$pervasive_parent";
+        $targetObj->setAttribute($target, "PARENT_PERVASIVE", $perv_parent_val);
 
         my $value = sprintf("0x%0.2X", $pervasive_parent);
         $targetObj->setAttribute($target, "CHIPLET_ID", $value);

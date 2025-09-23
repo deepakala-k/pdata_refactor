@@ -2765,7 +2765,8 @@ sub writeAttrIdNameMap
 
         # Simple or complex types
         if (   ( exists $attribute->{simpleType} )
-            || ( exists $attribute->{complexType} ) )
+            || ( exists $attribute->{complexType} ) 
+            || ( exists $attribute->{nativeType} ) )
         {
             # This loops through all attributes to add id and name
             # not just enumerated attributes

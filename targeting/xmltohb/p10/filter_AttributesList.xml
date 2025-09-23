@@ -89,8 +89,6 @@
   <attribute id="PROC_MASTER_TYPE"/>
   <attribute id="ISTEP_MODE"/>
   <attribute id="TYPE"/>
-  <attribute id="AFFINITY_BIN_PATH"/>
-  <attribute id="PHYS_BIN_PATH"/>
   <attribute id="FAPI_NAME"/>
   <attribute id="CHIPLET_ID"/>
   <attribute id="LOCATION_CODE"/>

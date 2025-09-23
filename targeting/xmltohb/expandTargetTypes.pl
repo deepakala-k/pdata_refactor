@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 # SPDX-License-Identifier: Apache-2.0
 
 ############################################################################
@@ -134,13 +134,10 @@ sub init
         "/allowedTargets/targetType",
         \$user_provided_tgt_filter_is_active );
 
-    print ("Deepa: user_provided_tgt_filter_is_active :: $user_provided_tgt_filter_is_active\n");
-
     loadAllowedFilterList( $filterAttrFile, 
         \%reqAttr,
         "/allowedAttributes/attribute",
         \$user_provided_attr_filter_is_active );
-    print ("Deepa: user_provided_attr_filter_is_active :: $user_provided_attr_filter_is_active\n");
 }
 
 sub isVerboseReq
@@ -166,7 +163,6 @@ sub filterAttribute {
 
             # If not in allowed list → remove it
             if (!exists $reqAttr{$attrId} && $user_provided_attr_filter_is_active) {
-                print "Deepa Removing attr $attrId from target $tgtId\n";
                 $tgtNode->removeChild($attrNode);
             }
         }

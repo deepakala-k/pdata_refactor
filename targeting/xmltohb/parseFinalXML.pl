@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 # SPDX-License-Identifier: Apache-2.0
 
 ####################################################################
@@ -70,10 +70,9 @@ sub isVerboseReq
 }
 
 sub getAttrsDef {
-    my ($inXMLFile, $filterFile) = @_;
+    my ($inXMLData, $filterFile) = @_;
 
     my %attributeDefList;
-    my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
 
     my @attrNodes;
 
@@ -121,13 +120,13 @@ sub parseAttributeDefinition {
     my $attributeDefinition = AttributeDefinition->new(simpleType => new SimpleType());
 
     if ($attrDef->exists('nativeType')) {
-        _handle_native_type($attributeDefinition, $attrDef);
+        handle_native_type($attributeDefinition, $attrDef);
     }
     elsif ($attrDef->exists('complexType')) {
-        _handle_complex_type($attributeDefinition, $attrDef);
+        handle_complex_type($attributeDefinition, $attrDef);
     }
     elsif ($attrDef->exists('simpleType')) {
-        _handle_simple_type($attributeDefinition, $attrDef, $inXMLData, $attrID);
+        handle_simple_type($attributeDefinition, $attrDef, $inXMLData, $attrID);
     }
     else {
         print "CRITICAL: Supported Datatype is not found for attribute $attrID\n";
@@ -142,7 +141,7 @@ sub parseAttributeDefinition {
 # Helpers
 # ----------------------------
 
-sub _handle_native_type {
+sub handle_native_type {
     my ($attributeDefinition, $attrDef) = @_;
 
     $attributeDefinition->datatype("nativeType");
@@ -154,7 +153,7 @@ sub _handle_native_type {
     $attributeDefinition->nativeType($nativeType);
 }
 
-sub _handle_complex_type {
+sub handle_complex_type {
     my ($attributeDefinition, $attrDef) = @_;
 
     $attributeDefinition->datatype("complexType");
@@ -173,7 +172,7 @@ sub _handle_complex_type {
     $attributeDefinition->complexType($complexType);
 }
 
-sub _handle_simple_type {
+sub handle_simple_type {
     my ($attributeDefinition, $attrDef, $inXMLData, $attrID) = @_;
 
     $attributeDefinition->datatype("simpleType");
@@ -186,11 +185,11 @@ sub _handle_simple_type {
     else {
         my $type = "";
         if ($attrDef->exists('simpleType/array')) {
-            _handle_array_type($SimpleType, $attrDef, $inXMLData, $attrID);
+            handle_array_type($SimpleType, $attrDef, $inXMLData, $attrID);
             $type = "array";
         }
         elsif ($attrDef->exists('simpleType/enumeration')) {
-            _handle_enum_type($SimpleType, $attrDef, $inXMLData, $attrID);
+            handle_enum_type($SimpleType, $attrDef, $inXMLData, $attrID);
             $type = "enum";
         }
 
@@ -205,7 +204,7 @@ sub _handle_simple_type {
             $SimpleType->default($primitiveTypeTag->findvalue('default'));
         }
 
-        _handle_primitive_type($SimpleType, $attrDef, $inXMLData, $attrID, $type, $primitiveType);
+        handle_primitive_type($SimpleType, $attrDef, $inXMLData, $attrID, $type, $primitiveType);
     }
 
     if ($SimpleType->default eq "") {
@@ -215,13 +214,13 @@ sub _handle_simple_type {
     $attributeDefinition->simpleType($SimpleType);
 }
 
-sub _handle_array_type {
+sub handle_array_type {
     my ($SimpleType, $attrDef, $inXMLData, $attrID) = @_;
     $SimpleType->arrayDimension($attrDef->findvalue('simpleType/array'));
     $SimpleType->DataType("array");
 }
 
-sub _handle_enum_type {
+sub handle_enum_type {
     my ($SimpleType, $attrDef, $inXMLData, $attrID) = @_;
 
     $SimpleType->default($attrDef->findvalue('simpleType/enumeration/default'));
@@ -235,7 +234,7 @@ sub _handle_enum_type {
     }
 }
 
-sub _handle_primitive_type {
+sub handle_primitive_type {
     my ($SimpleType, $attrDef, $inXMLData, $attrID, $type, $primitiveType) = @_;
 
     if ($type eq "array") {
@@ -366,66 +365,59 @@ struct AttributeData => {
     complexFieldValues     => '%',
 };
 
-sub getTargetInstanceAndTargetTypeData
-{
-    my $inXMLFile = $_[0];
-    my $filterFile = $_[1];
+# Parse targetInstance and targetType data from XML
+# If a filter file is provided, only required targets are parsed; otherwise, parse all
+sub getTargetInstanceAndTargetTypeData {
+    my ($inXMLData, $filterFile) = @_;
 
-    my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
+    my (%targetInstanceList, %targetTypeList);
 
-    my %targetInstanceList;
-    my %targetTypeList;
-
-    if( $filterFile ne "" )
-    {
+    if ($filterFile ne '') {
+        # Get required targets from filter file
         my %reqTgtsList = getRequiredTgts($filterFile);
 
-        foreach my $rTgt ( sort ( keys %reqTgtsList) )
-        {
-            # Parse targetInstance Targets
-            my $TargetInstanceTgtPath = '/attributes/targetInstance/type[text()=\''.$rTgt.'\']/ancestor::targetInstance';
-            my $targetInstanceTargetData = $inXMLData->findnodes($TargetInstanceTgtPath);
+        foreach my $rTgt (sort keys %reqTgtsList) {
 
-            if ( $targetInstanceTargetData->size() > 0 )
-            {
-                foreach my $eachTargetInstanceData ($targetInstanceTargetData->get_nodelist)
-                {
-                    @ret = parseTargetInstanceData($eachTargetInstanceData);
-                    $targetInstanceList{$ret[0]} = $ret[1];
+            # ------------------------
+            # Parse targetInstance targets
+            # ------------------------
+            my $targetInstanceXPath = "/attributes/targetInstance/type[text()='$rTgt']/ancestor::targetInstance";
+            my $targetInstanceNodes = $inXMLData->findnodes($targetInstanceXPath);
+
+            if ($targetInstanceNodes->size > 0) {
+                foreach my $node ($targetInstanceNodes->get_nodelist) {
+                    my ($id, $obj) = parseTargetInstanceData($node);
+                    $targetInstanceList{$id} = $obj;
                 }
-            }
-            else
-            {
-                print "CRITICAL: Required targetInstance target $rTgt data is not found in xml\n" if isVerboseReq('C');
+            } else {
+                print "CRITICAL: Required targetInstance target '$rTgt' not found in XML\n"
+                    if isVerboseReq('C');
             }
 
-            # Parse targettype Targets
-            my $targetTypeTargetPath = '/attributes/targetType/id[text()=\''.$rTgt.'\']/ancestor::targetType';
-            my $targetTypeTargetData = $inXMLData->findnodes($targetTypeTargetPath);
-            if ($targetTypeTargetData->size() > 0 )
-            {
-                foreach my $TargetTypeData ($targetTypeTargetData->get_nodelist)
-                {
-                    my @ret = parseTargetTypeData($TargetTypeData);
-                    $targetTypeList{$ret[0]} = $ret[1];
+            # ------------------------
+            # Parse targetType targets
+            # ------------------------
+            my $targetTypeXPath = "/attributes/targetType/id[text()='$rTgt']/ancestor::targetType";
+            my $targetTypeNodes = $inXMLData->findnodes($targetTypeXPath);
+
+            if ($targetTypeNodes->size > 0) {
+                foreach my $node ($targetTypeNodes->get_nodelist) {
+                    my ($id, $obj) = parseTargetTypeData($node);
+                    $targetTypeList{$id} = $obj;
                 }
             }
         }
-    }
-    else # Parse all targetInstance and targettype targets from xml if required targets list doesn't given
-    {
-        my $TargetInstanceTgtPath = '/attributes/targetInstance';
-        foreach my $targetInstanceTargetData ( $inXMLData->findnodes($TargetInstanceTgtPath) )
-        {
-            @ret = parseTargetInstanceData($targetInstanceTargetData);
-            $targetInstanceList{$ret[0]} = $ret[1];
+    } else {
+        # No filter: parse all targetInstance nodes
+        foreach my $node ($inXMLData->findnodes('/attributes/targetInstance')) {
+            my ($id, $obj) = parseTargetInstanceData($node);
+            $targetInstanceList{$id} = $obj;
         }
 
-        my $targetTypeTargetPath = '/attributes/targetType';
-        foreach my $targetTypeTargetData ( $inXMLData->findnodes($targetTypeTargetPath) )
-        {
-            my @ret = parseTargetTypeData($targetTypeTargetData);
-            $targetTypeList{$ret[0]} = $ret[1];
+        # Parse all targetType nodes
+        foreach my $node ($inXMLData->findnodes('/attributes/targetType')) {
+            my ($id, $obj) = parseTargetTypeData($node);
+            $targetTypeList{$id} = $obj;
         }
     }
 
@@ -458,9 +450,9 @@ sub parseTargetInstanceData {
 
         my $attributeData;
         if ($TargetInstanceAttrData->exists('default/field')) {
-            $attributeData = _parse_complex_attribute($TargetInstanceID, $AttrID, $TargetInstanceAttrData);
+            $attributeData = parse_complex_attribute($TargetInstanceID, $AttrID, $TargetInstanceAttrData);
         } else {
-            $attributeData = _parse_simple_attribute($TargetInstanceAttrData);
+            $attributeData = parse_simple_attribute($TargetInstanceAttrData);
         }
 
         ${ $targetInstance->targetAttrList }{$AttrID} = $attributeData if $attributeData;
@@ -473,7 +465,7 @@ sub parseTargetInstanceData {
 # Helpers
 # ----------------------------
 
-sub _parse_complex_attribute {
+sub parse_complex_attribute {
     my ($TargetInstanceID, $AttrID, $TargetInstanceAttrData) = @_;
 
     my $attributeData = AttributeData->new(valueDataType => "complexType");
@@ -498,7 +490,7 @@ sub _parse_complex_attribute {
     return $attributeData;
 }
 
-sub _parse_simple_attribute {
+sub parse_simple_attribute {
     my ($TargetInstanceAttrData) = @_;
 
     my $attributeData = AttributeData->new(valueDataType => "simpleType");

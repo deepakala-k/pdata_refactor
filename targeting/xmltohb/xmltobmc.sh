@@ -358,7 +358,6 @@ for system_mrw_xml in $SYSTEMS_MRW_XML; do
     #step 15: Create device tree from the 
     "$TARGETING_XMLTOHB_REL_PATH/xmltoDTS.pl" \
         --inXML ${GENDIR}/${final_merged_xml_file_name} \
-        --pdbgMapFile $TARGETING_XMLTOHB_PROC_REL_PATH/pdbgCompatibleNameMapping.xml \
         --outDTS ${GENDIR}/${dts_file_name}
     
     if [ $? -ne 0 ]; then

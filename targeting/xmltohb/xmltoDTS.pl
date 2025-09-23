@@ -2,8 +2,8 @@
 
 #################################################################################
 #
-#   * This perl script generate device tree structure from intermediate xml
-#     which is contain TargetInstance, TargetType and Non-TargetType targets/attributes.
+#   * This perl script generate device tree structure from final xml
+#     which is contain TargetInstance, TargetType and attributes.
 #   * This perl script also support to prepare dts with
 #     required targets and attributes.
 #
@@ -27,15 +27,16 @@ my $inXMLFile;
 my $dtsFilename;
 my $filterAttrsFile;
 my $filterTgtsFile;
-my $pdbgMapFile;
 my $help;
 my $myVerbose;
+my $inXMLData;
 
 # To store xml data
 my %attributeDefList;
 my %targetTypeList;
 my %targetInstanceList;
-my %pdbgCompPropMapList;
+
+
 # Used for dts (device tree structure) generation
 my %headOfDTree;
 my $dtsFHandle;
@@ -98,8 +99,8 @@ sub printUsage
     print "
 Description:
 
-    *   This tool will generate device tree structure from intermediate xml
-        which is contain TargetInstance, TargetType targets/attributes.
+    *   This tool will generate device tree structure from final xml
+        which is contain TargetInstance, TargetType targets and attributes.
     *   This tool also support to prepare dts with required
         targets and attributes.\n" if $help;
 
@@ -131,6 +132,7 @@ Usage of $tool:
 
 sub main
 {
+    $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
     initVerbose($myVerbose);
     init();
     loadTargetTypeDefaultIfNoTargetInstanceDefault();
@@ -140,71 +142,60 @@ sub main
 
 sub init
 {
-
-    my @ret = getTargetInstanceAndTargetTypeData($inXMLFile, $filterTgtsFile);
-    %targetInstanceList = %{$ret[0]};
-    %targetTypeList = %{$ret[1]};
-    %attributeDefList = getAttrsDef( $inXMLFile, $filterAttrsFile );
+    my ($targetInstanceListRef, $targetTypeListRef) = 
+        getTargetInstanceAndTargetTypeData($inXMLData, $filterTgtsFile);
+    %targetInstanceList = %{$targetInstanceListRef};
+    %targetTypeList = %{$targetTypeListRef};
+    %attributeDefList = getAttrsDef( $inXMLData, $filterAttrsFile );
     my $noOfTargetInstance = keys %targetInstanceList;
     my $noOfTargetType = keys %targetTypeList;
     my $attrsSize = keys %attributeDefList;
     print "INFO: noOfTargetInstance: $noOfTargetInstance noOfTargetType: $noOfTargetType attrsSize: $attrsSize\n" if isVerboseReq('I');
 }
 
-sub loadTargetTypeDefaultIfNoTargetInstanceDefault
-{
-    foreach my $targetTypeID ( keys %targetTypeList )
-    {
-        foreach my $targetInstanceID ( keys %targetInstanceList )
-        {
-            if($targetTypeID eq $targetInstanceList{$targetInstanceID} -> TargetInstance::targetType)
-            {
-                my $targetInstance = $targetInstanceList{$targetInstanceID};
-                my %updatedTargetInstanceAttrsList = %{$targetInstance->targetAttrList};
-                my %targetTypeAttrsList = %{$targetTypeList{$targetTypeID} -> TargetType::targetAttrList};
-                my @sortedKeys = sort { numericalSort($a, $b) } keys %targetTypeAttrsList;
+sub loadTargetTypeDefaultIfNoTargetInstanceDefault {
+    foreach my $targetInstanceID (keys %targetInstanceList) {
+        my $targetInstance = $targetInstanceList{$targetInstanceID};
+        my $targetTypeID   = $targetInstance->TargetInstance::targetType;
 
-                foreach my $targetTypeAttr ( @sortedKeys )
-                {
-                    if( exists $updatedTargetInstanceAttrsList{$targetTypeAttr} )
-                    {
-                        if ( $updatedTargetInstanceAttrsList{$targetTypeAttr}-> AttributeData::valueDataType eq "")
-                        {
-                            $updatedTargetInstanceAttrsList{$targetTypeAttr} = $targetTypeAttrsList{$targetTypeAttr};
-                        }
-                    }
-                    else
-                    {
-                        $updatedTargetInstanceAttrsList{$targetTypeAttr} = $targetTypeAttrsList{$targetTypeAttr};
-                    }
-                }
-                $targetInstance->targetAttrList(\%updatedTargetInstanceAttrsList);
+        # Skip if no matching target type
+        next unless exists $targetTypeList{$targetTypeID};
+
+        my $instanceAttrs = $targetInstance->targetAttrList;   # hashref
+        my $typeAttrs     = $targetTypeList{$targetTypeID}->TargetType::targetAttrList; # hashref
+
+        foreach my $attr (sort { numericalSort($a, $b) } keys %$typeAttrs) {
+            # Replace only if missing or empty
+            if (!exists $instanceAttrs->{$attr}
+                || $instanceAttrs->{$attr}->AttributeData::valueDataType eq "") {
+                $instanceAttrs->{$attr} = $typeAttrs->{$attr};
             }
         }
+
+        # update instance with modified attrs
+        $targetInstance->targetAttrList($instanceAttrs);
     }
 }
 
-sub prepareDeviceTreeHierarchy
-{
-    my %nonPervTgtsList;
-    my %omiPervPath;
+sub prepareDeviceTreeHierarchy {
     my @sortedKeys = sort { numericalSort($a, $b) } keys %targetInstanceList;
-    
-    # Prepare for TargetInstance targets
-    foreach my $targetInstanceID ( @sortedKeys)
-    {
+
+    foreach my $targetInstanceID (@sortedKeys) {
         my $attrList = $targetInstanceList{$targetInstanceID}->targetAttrList;
 
-        if ( !exists ${$attrList}{'AFFINITY_PATH'} )
-        {
-            print "CRITICAL: \"AFFINITY_PATH\" attribute is not found for TargetInstance Target : \"$targetInstanceID\". So Ignoring\n" if isVerboseReq('C');
+        unless (exists $attrList->{'PHYS_PATH'}) {
+            print "CRITICAL: \"PHYS_PATH\" attribute is not found for TargetInstance Target : \"$targetInstanceID\". So Ignoring\n"
+                if isVerboseReq('C');
             next;
         }
-        my $affinityPath = ${$attrList}{'AFFINITY_PATH'}->value;
 
-        # Getting path value alone by ignoring "affinity:"
-        my @hash = split(/\//, substr($affinityPath, index($affinityPath, ':') + 1));
-        processTargetPath($targetInstanceID, \@hash);
+        my $deviceTreeHierarchy = $attrList->{'PHYS_PATH'}->value;
+
+        # remove everything up to and including the first colon
+        $deviceTreeHierarchy =~ s/^[^:]+://;
+
+        my @parts = split '/', $deviceTreeHierarchy;
+        processTargetPath($targetInstanceID, \@parts);
     }
 }
 
@@ -218,95 +209,67 @@ sub getNumAtTheEnd {
     return $number || 0;
 }
 
-#Sorts two strings using number at the end if they contain the same string part.
-#Or sort them alphabetically
+# Sort comparator that orders strings in "natural" style:
+# - If two strings share the same non-numeric prefix and both end in numbers,
+#   compare them by those numeric suffixes (e.g. "core2" < "core10").
+# - Otherwise, fall back to standard alphabetical comparison.
 sub numericalSort {
-    my ($firstString, $secondString) = @_;
-    
-    my $firstStringWithoutNum = $firstString;
-    my $secondStringWithoutNum = $secondString;
-    
-    # store the numerical value at the end to num variables
-    my $firstNum = getNumAtTheEnd($firstString);
-    my $secondNum = getNumAtTheEnd($secondString);
+    my ($a, $b) = @_;
 
-    # Removes the numerical value at the end of each of the variables
-    # s/\d+$// expression chops the number at the end
-    $firstStringWithoutNum =~ s/\d+$//;
-    $secondStringWithoutNum =~ s/\d+$//;
+    # Capture prefix and optional numeric suffix
+    my ($prefixA, $numA) = $a =~ /^(.*?)(\d+)?$/;
+    my ($prefixB, $numB) = $b =~ /^(.*?)(\d+)?$/;
 
-    # Compares the name part without numbers
-    # and if both numbers are 0, it might be possible that the original 
-    # string did not have a number. Hence do a string compare
-    if ($firstStringWithoutNum eq $secondStringWithoutNum 
-        && $firstNum != 0 && $secondNum != 0)
-    {
-      return $firstNum <=> $secondNum;
+    if ($prefixA eq $prefixB && defined $numA && defined $numB) {
+        return $numA <=> $numB;
     }
-    else
-    {
-      return $firstString cmp $secondString;
-    }
+    return $a cmp $b;
 }
 
-sub processTargetPath
-{
-    my $TargetID = $_[0];
-    my @splittedPath = @{$_[1]};
-    # If Any intermediate node is not found from given path then create empty node and continue
+sub processTargetPath {
+    my ($TargetID, $splittedPathRef) = @_;
     my $refDTreeNodesList = \%headOfDTree;
     my $lastNode;
-    foreach my $key ( @splittedPath )
-    {
-        if ( !exists ( $refDTreeNodesList -> { $key } ) )
-        {
-            $refDTreeNodesList -> { $key } = createNode($key);
-        }
-        $lastNode = $refDTreeNodesList -> {$key};
-        $refDTreeNodesList = \%{ $refDTreeNodesList -> { $key } -> Node::childNodes } ;
+    my $parentNode;
+
+    foreach my $key (@$splittedPathRef) {
+        # Create node if it does not exist
+        $refDTreeNodesList->{$key} //= createNode($key);
+
+        $parentNode = $lastNode;                # track parent while walking
+        $lastNode   = $refDTreeNodesList->{$key};
+        $refDTreeNodesList = $lastNode->Node::childNodes;
     }
-    # Assign node member values for the last node based on last key(path name) in thn given path
-    $lastNode->compatible($targetInstanceList{$TargetID} -> TargetInstance::targetType);
-    $lastNode->attributeList($targetInstanceList{$TargetID} -> TargetInstance::targetAttrList);
 
-    # Add the reg property for the target if that contains "I2C_ADDRESS"
-    # attribute to perform the i2c read and write operation on this target.
-    if (exists ${$lastNode->attributeList}{"I2C_ADDRESS"})
-    {
-        $lastNode->reg(${$lastNode->attributeList}{"I2C_ADDRESS"}->value);
+    # Assign attributes to the last node
+    my $instance = $targetInstanceList{$TargetID};
+    $lastNode->compatible($instance->TargetInstance::targetType);
+    $lastNode->attributeList($instance->TargetInstance::targetAttrList);
 
-        # Get the parent target to add address and size cells properties
-        # in the device tree since added the reg property so these properties
-        # are required in the parent target to perform the address translation.
-        my @parentPathEleKey = @splittedPath;
-        pop @parentPathEleKey;
+    # Add I2C-specific properties if I2C_ADDRESS exists
+    if (my $i2cAttr = $lastNode->attributeList->{"I2C_ADDRESS"}) {
+        $lastNode->reg($i2cAttr->value);
 
-        my $parentNode;
-        $refDTreeNodesList = \%headOfDTree;
-        foreach my $key ( @parentPathEleKey )
-        {
-            $parentNode = $refDTreeNodesList -> { $key };
-            $refDTreeNodesList = \%{ $refDTreeNodesList -> { $key } -> Node::childNodes } ;
+        if ($parentNode) {
+            # Since I2C_ADDRESS is uint8, use fixed cells
+            $parentNode->address_cells(0x01);
+            $parentNode->size_cells(0x00);
         }
-
-        # Adding address and size cells value as "0x01" and "0x00" respectively
-        # since the I2C_ADDRESS attribute is uint8 type
-        $parentNode->address_cells(0x01);
-        $parentNode->size_cells(0x00);
     }
 }
 
-sub createNode
-{
-	my $node = Node->new();
-	$node->nodeName($_[0]);
-    $node->compatible("");
+sub createNode {
+    my ($name) = @_;
+
+    my $node = Node->new();
+    $node->nodeName($name);
+    $node->compatible('');
     $node->attributeList({});
     $node->childNodes({});
     $node->address_cells("");
     $node->size_cells("");
-    $node->reg("");
-    return ($node);
+    $node->reg('');
+    return $node;
 }
 
 sub createDTSFile
@@ -327,57 +290,43 @@ sub createDTSFile
     print "\nDevice tree structure file \"$baseDtsFileName\" is created successfully...\n";
 }
 
-sub addNodesIntoDTSFile
-{
-    my $nodes = $_[0];
+sub addNodesIntoDTSFile {
+    my ($nodes) = @_;
 
-    my $addDevTreeNode = 1;
-    my $addCompProp = 1;
-    my @sortedKeys = sort { numericalSort($a, $b) } keys %{$nodes};
+    my @sortedKeys = sort { numericalSort($a, $b) } keys %$nodes;
 
-    foreach my $key ( @sortedKeys)
-    {
-        # Don't add device tree node for below targets as per pdbg expectaion
-        if ( $key =~ m/sys/)
-        {
-            $addDevTreeNode = 0;
+    foreach my $key (@sortedKeys) {
+        # pdbg expectations:
+        my $addDevTreeNode = ($key !~ /sys/);
+
+        my $node = $nodes->{$key};
+        my $nodeName = $node->Node::nodeName;
+
+        # TODO - why to remove all the "-"?
+        # remove "-" except for i2c- nodes
+        $nodeName =~ s/-//g unless $nodeName =~ /^i2c-/;
+
+        if ($addDevTreeNode) {
+            print {$dtsFHandle} "\n$nodeName {\n";
         }
 
-        # Don't add compatible property for below targets as per pdbg expectaion
-        if ( $key =~ m/sys/ or $key =~ m/node/ or $key =~ m/^i2c-/ )
-        {
-            $addCompProp = 0;
+        addTargetDataIntoDTSFile($node);
+        addNodesIntoDTSFile($node->Node::childNodes);
+
+        if ($addDevTreeNode) {
+            print {$dtsFHandle} "};\n";
         }
-
-        my $nodeName = $nodes -> {$key} -> Node::nodeName;
-
-        # Removing "-" in the node name as per pdbg expectation except
-        # below targets
-        if (!($nodeName =~ m/^i2c-/))
-        {
-            $nodeName =~ s/-//g;
-        }
-
-        print {$dtsFHandle} "\n$nodeName {\n" if $addDevTreeNode eq 1;
-
-        addTargetDataIntoDTSFile($nodes->{$key}, $addCompProp);
-        addNodesIntoDTSFile($nodes -> {$key} -> Node::childNodes);
-
-        print {$dtsFHandle} "};\n" if $addDevTreeNode eq 1;
     }
 }
 
 # Main function
 sub addTargetDataIntoDTSFile {
-    my ($devTreeNode, $compPropReqAdd) = @_;
+    my ($devTreeNode) = @_;
 
     my %attributeList = %{$devTreeNode->attributeList};
 
     # Add basic properties
     addBasicProperties($devTreeNode);
-
-    # Convert PHYS_PATH and AFFINITY_PATH attributes
-    handleSpecialAttributes(\%attributeList);
 
     # Process each attribute
     foreach my $AttrID (sort { numericalSort($a, $b) } keys %attributeList) {
@@ -411,6 +360,10 @@ sub addTargetDataIntoDTSFile {
         elsif ($attrType eq "complexType") {
             handleComplexType($AttrID, $attributeList{$AttrID}->AttributeData::value);
         }
+        elsif ($attrType eq "nativeType") {
+            my $attrVal = $attributeList{$AttrID}->AttributeData::value;
+            handleNativeType($AttrID, $attrVal);
+        }
     }
 }
 
@@ -418,60 +371,92 @@ sub addTargetDataIntoDTSFile {
 sub addBasicProperties {
     my ($devTreeNode) = @_;
 
-    print {$dtsFHandle} "compatible = \"$devTreeNode->{compatible}\";\n" if $devTreeNode->{compatible} ne "";
-    print {$dtsFHandle} "reg = <$devTreeNode->{reg}>;\n" if $devTreeNode->{reg} ne "";
-    print {$dtsFHandle} "#address-cells = <$devTreeNode->{address_cells}>;\n" if $devTreeNode->{address_cells} ne "";
-    print {$dtsFHandle} "#size-cells = <$devTreeNode->{size_cells}>;\n" if $devTreeNode->{size_cells} ne "";
+    print {$dtsFHandle} "compatible = \"$devTreeNode->{'Node::compatible'}\";\n"
+        if defined $devTreeNode->{'Node::compatible'} and $devTreeNode->{'Node::compatible'} ne "";
+
+    print {$dtsFHandle} "reg = <$devTreeNode->{'Node::reg'}>;\n"
+        if defined $devTreeNode->{'Node::reg'} and $devTreeNode->{'Node::reg'} ne "";
+
+    print {$dtsFHandle} "#address-cells = <$devTreeNode->{'Node::address_cells'}>;\n"
+        if defined $devTreeNode->{'Node::address_cells'} and $devTreeNode->{'Node::address_cells'} ne "";
+
+    print {$dtsFHandle} "#size-cells = <$devTreeNode->{'Node::size_cells'}>;\n"
+        if defined $devTreeNode->{'Node::size_cells'} and $devTreeNode->{'Node::size_cells'} ne "";
 }
 
-# Handle PHYS_PATH and AFFINITY_PATH
-sub handleSpecialAttributes {
-    my ($attrListRef) = @_;
-    if (exists $attrListRef->{"PHYS_BIN_PATH"}) {
-        $attrListRef->{"PHYS_BIN_PATH"}->value(getBinaryFormatForPath($attrListRef->{"PHYS_PATH"}->value, "PHYS_BIN_PATH"));
-    }
-    if (exists $attrListRef->{"AFFINITY_BIN_PATH"}) {
-        $attrListRef->{"AFFINITY_BIN_PATH"}->value(getBinaryFormatForPath($attrListRef->{"AFFINITY_PATH"}->value, "AFFINITY_BIN_PATH"));
+sub handleNativeType {
+    my ($AttrID, $attrVal) = @_;
+
+    my $nativeTypeEquivalentSimpleType = bless(
+        {
+            'SimpleType::stringSize'     => undef,
+            'SimpleType::enumId'         => undef,
+            'SimpleType::default'        => '',
+            'SimpleType::DataType'       => 'array',
+            'SimpleType::subType'        => 'uint8_t',
+            'SimpleType::arrayDimension' => '21'
+        },
+        'SimpleType'
+    );
+
+    $attrVal = getBinaryFormatForPath($attrVal, $nativeTypeEquivalentSimpleType);
+    if($attrVal ne "" && $AttrID ne "PARENT_PERVASIVE")
+    {
+        handleArrayType($AttrID, $attrVal, $nativeTypeEquivalentSimpleType);
     }
 }
 
-# SimpleType handlers
+# Handle array-type attributes:
+# - Calculate total number of elements from array dimensions
+# - Extract values based on subtype (string, enum, numeric)
+# - Resolve enum strings to numeric values if enum
+# - Pad missing elements with 0
+# - Push final array into DTS
 sub handleArrayType {
     my ($AttrID, $attrVal, $simpleType) = @_;
 
+    # Compute total element count from array dimensions
     my $eleCnt = 1;
-    my @dims = split(/,/, $simpleType->arrayDimension);
-    $eleCnt *= $_ foreach @dims;
+    my @dims = split /,/, $simpleType->arrayDimension;
+    $eleCnt *= $_ for @dims;
 
     my @arrayValues;
 
-    if ($simpleType->subType eq "string") {
-        (@arrayValues) = $attrVal =~ m/"(.*?)"/g;
+    if ($simpleType->subType eq 'string') {
+        # Extract all quoted strings
+        @arrayValues = $attrVal =~ /"(.*?)"/g;
     }
-    elsif (index($simpleType->subType, "enum_") != -1) {
-        my $enumNames = $attrVal ne "" ? $attrVal : $simpleType->enumDefinition->default;
-        @arrayValues = split(/,/, $enumNames);
-        foreach my $enumName (@arrayValues) {
-            my $enumVal = getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, $enumName);
-            $enumVal = getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, "") if $enumVal eq "";
-            $enumName = $enumVal;
+    elsif ($simpleType->subType =~ /^enum_/) {
+        # Use provided values or default from enum definition
+        my $enumNames = $attrVal ne '' ? $attrVal : $simpleType->enumDefinition->default;
+        @arrayValues = split /,/, $enumNames;
+
+        # Convert enum names to numeric values
+        for my $i (0..$#arrayValues) {
+            my $enumVal = getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, $arrayValues[$i]);
+            $enumVal = getEnumVal(\@{$simpleType->enumDefinition->enumeratorList}, '') if $enumVal eq '';
+            $arrayValues[$i] = $enumVal;
         }
     }
     else {
-        @arrayValues = split(/,/, $attrVal);
-        # Convert enum-like string values if necessary
-        foreach my $arrVal (@arrayValues) {
-            if (defined $arrVal && $arrVal !~ /^-?\d+$/ && $arrVal !~ /^0x[0-9A-Fa-f]+$/ && $arrVal ne "") {
-                # Fill from enum if exists
-                my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
-                my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
+        # Numeric or mixed types
+        @arrayValues = split /,/, $attrVal;
+
+        for my $i (0..$#arrayValues) {
+            my $val = $arrayValues[$i];
+
+            # Resolve non-numeric values via enum if defined
+            if (defined $val && $val ne '' && $val !~ /^-?\d+$/ && $val !~ /^0x[0-9A-Fa-f]+$/) {
+                my $enumDefPath = "/attributes/enumerationType/id[text()='$AttrID']/ancestor::enumerationType";
                 my $enumDefData = $inXMLData->find($enumDefPath);
-                if ($enumDefData->size() > 0) {
+
+                if ($enumDefData->size > 0) {
                     my $enumDef = parseEnumerationTypes($enumDefData);
                     $simpleType->enumDefinition($enumDef);
-                    my $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $arrVal);
-                    $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
-                    $arrVal = $enumVal;
+
+                    my $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $val);
+                    $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, '') if $enumVal eq '';
+                    $arrayValues[$i] = $enumVal;
                 }
             }
         }
@@ -480,8 +465,15 @@ sub handleArrayType {
     # Pad missing elements with 0
     push @arrayValues, (0) x ($eleCnt - @arrayValues) if @arrayValues < $eleCnt;
 
-    setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType."_".$simpleType->subType, \@arrayValues, $eleCnt);
+    # Set array into DTS with full type info
+    setDTSFormatValueForSimpleAttr(
+        $AttrID,
+        $simpleType->DataType . "_" . $simpleType->subType,
+        \@arrayValues,
+        $eleCnt
+    );
 }
+
 
 sub handleEnumType {
     my ($AttrID, $attrVal, $simpleType) = @_;
@@ -506,7 +498,6 @@ sub handleNumericType {
 
     if (defined $val && $val ne "" && $val !~ /^-?\d+$/ && $val !~ /^0x[0-9A-Fa-f]+$/) {
         # Handle enum fallback
-        my $inXMLData = XML::LibXML->load_xml(location => $inXMLFile);
         my $enumDefPath = '/attributes/enumerationType/id[text()=\''.$AttrID.'\']/ancestor::enumerationType';
         my $enumDefData = $inXMLData->find($enumDefPath);
         if ($enumDefData->size() > 0) {
@@ -520,6 +511,45 @@ sub handleNumericType {
 
     setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, [$val], 1);
 }
+
+# Handle numeric-type attributes:
+# - Normalize boolean strings ("true"/"false") into 1/0
+# - Accept integers and hex values directly
+# - If non-numeric, try resolving through enumeration definitions
+# - Finally, set the DTS value in the correct format
+sub handleNumericType {
+    my ($AttrID, $attrVal, $simpleType) = @_;
+
+    # Normalize booleans into numeric form
+    my $val = ($attrVal eq 'true')  ? 1
+            : ($attrVal eq 'false') ? 0
+            : $attrVal;
+
+    # If value is non-empty and not already a valid integer or hex
+    if (defined $val && $val ne "" && $val !~ /^-?\d+$/ && $val !~ /^0x[0-9A-Fa-f]+$/) {
+        
+        # XPath: find the enumerationType node for this AttrID
+        my $enumDefPath = "/attributes/enumerationType/id[text()='$AttrID']/ancestor::enumerationType";
+        my $enumDefData = $inXMLData->find($enumDefPath);
+
+        if ($enumDefData->size > 0) {
+            # Parse enumeration definition and attach to the type
+            my $enumDef = parseEnumerationTypes($enumDefData);
+            $simpleType->enumDefinition($enumDef);
+
+            # Try to resolve enum string to numeric value
+            my $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, $val);
+
+            # Fallback to default (empty string case) if unresolved
+            $enumVal = getEnumVal(\@{$enumDef->enumeratorList}, "") if $enumVal eq "";
+
+            $val = $enumVal;
+        }
+    }
+    # Push final resolved value into DTS representation
+    setDTSFormatValueForSimpleAttr($AttrID, $simpleType->DataType, [$val], 1);
+}
+
 
 sub handleComplexType {
     my ($AttrID, $attrValue) = @_;
@@ -550,88 +580,69 @@ sub getAttributeType
     return ($attrType);
 }
 
-sub setDTSFormatValueForSimpleAttr
-{
-    my $attrName = $_[0];
-    my $type = $_[1];
-    my @values = @{$_[2]};
-    my $eleCnt = $_[3];
+# Format and print a simple attribute value into DTS syntax
+sub setDTSFormatValueForSimpleAttr {
+    my ($attrName, $type, $valuesRef, $eleCnt) = @_;
+    my @values = @$valuesRef;
 
-    # Getting actual type from input type value if type contains array or enum
-    # E.g : enum_uint32_t => uint32 or array_enum_uint32_t  => uint32
-    if ( $type =~ m/array/ or $type =~ m/enum/ )
-    {
+    # Extract base type if input contains array/enum prefixes
+    # e.g. "enum_uint32_t" -> "uint32", "array_enum_uint32_t" -> "uint32"
+    if ($type =~ /array/ or $type =~ /enum/) {
         $type = substr($type, 0, rindex($type, "_"));
         $type = substr($type, rindex($type, "_") + 1);
     }
 
-    my $dtsFormatedVal;
-    my $begFormatSym;
-    my $valSize = @values;
-    foreach my $pValue (@values)
-    {
-        if( $type =~ m/int8/ )
-        {
-            if ( $pValue =~ m/0x/ )
-            {
-                $pValue =~ s/0x//g;
-                $pValue = "0".$pValue if length($pValue) == 1;
-            }
-            else
-            {
+    my $dtsFormatedVal = '';
+    my $begFormatSym = '';
+    my $valSize = scalar @values;
+
+    foreach my $pValue (@values) {
+        # Treat undefined or empty values as 0
+        $pValue = 0 if !defined $pValue || $pValue eq "";
+
+        if ($type =~ /int8/) {
+            $begFormatSym = "[" if $begFormatSym eq "";
+            if ($pValue =~ /^0x/i) {
+                $pValue =~ s/0x//i;
+                $pValue = "0$pValue" if length($pValue) == 1;
+            } else {
                 $pValue = sprintf("%02X", $pValue);
             }
+            $dtsFormatedVal .= $pValue . ($valSize > 1 ? " " : "");
 
+        } elsif ($type =~ /int16/) {
             $begFormatSym = "[" if $begFormatSym eq "";
-            $dtsFormatedVal .= $pValue;
-            $dtsFormatedVal .= " " if $valSize > 1;
-        }
-        elsif( $type =~ m/int16/ )
-        {
-            if ( $pValue =~ m/0x/ )
-            {
-                $pValue =~ s/0x//g;
-                for ( my $x = 0; length($pValue) < 4; $x + 1) { $pValue = "0".$pValue }
-            }
-            else
-            {
+            if ($pValue =~ /^0x/i) {
+                $pValue =~ s/0x//i;
+                $pValue = ("0" x (4 - length($pValue))) . $pValue;  # pad to 4 chars
+            } else {
                 $pValue = sprintf("%04X", $pValue);
             }
-
             my $fByte = substr($pValue, 0, 2);
             my $sByte = substr($pValue, 2, 2);
+            $dtsFormatedVal .= "$fByte $sByte" . ($valSize > 1 ? " " : "");
 
-            $begFormatSym = "[" if $begFormatSym eq "";
-            $dtsFormatedVal .= $fByte." ".$sByte;
-            $dtsFormatedVal .= " " if $valSize > 1;
-        }
-        elsif( $type =~ m/int32/ )
-        {
+        } elsif ($type =~ /int32|int64/) {
             $begFormatSym = "<" if $begFormatSym eq "";
-            $dtsFormatedVal .= "$pValue";
-            $dtsFormatedVal .= " " if $valSize > 1;
-        }
-        elsif( $type =~ m/int64/ )
-        {
-            $begFormatSym = "<" if $begFormatSym eq "";
-            $dtsFormatedVal .= "$pValue";
-            $dtsFormatedVal .= " " if $valSize > 1;
-        }
-        elsif( $type =~ m/string/ )
-        {
-           $dtsFormatedVal .= "\"$pValue\"";
-           $dtsFormatedVal .= ", " if $valSize > 1;
-        }
-        else
-        {
-            # Unsupported type given
+            $dtsFormatedVal .= "$pValue" . ($valSize > 1 ? " " : "");
+
+        } elsif ($type =~ /string/) {
+            $dtsFormatedVal .= "\"$pValue\"" . ($valSize > 1 ? ", " : "");
+
+        } else {
+            # Unsupported type
             return "";
         }
     }
-    $dtsFormatedVal = "[ ".$dtsFormatedVal if $begFormatSym eq "[";
-    $dtsFormatedVal .= " ]" if $begFormatSym eq "[";
-    $dtsFormatedVal = "<".$dtsFormatedVal if $begFormatSym eq "<";
-    $dtsFormatedVal .= ">" if $begFormatSym eq "<";
+
+    # Wrap formatted value in brackets or angle brackets
+    if ($begFormatSym eq "[") {
+        $dtsFormatedVal = "[ " . $dtsFormatedVal . " ]";
+    } elsif ($begFormatSym eq "<") {
+        $dtsFormatedVal = "<" . $dtsFormatedVal . ">";
+    }
+
+    # Print the final DTS attribute line
     print {$dtsFHandle} "$attrPrefix$attrName = $dtsFormatedVal;\n";
 }
 
@@ -681,17 +692,17 @@ sub getEnumVal
 
 sub getBinaryFormatForPath
 {
-    my ($phyOrAffpath, $attrToConstruct) = @_;
+    my ($phyOrAffpath, $entityPathSimpleType) = @_;
     my ($pathType, $path) = split(/:/, $phyOrAffpath);
     my @pathElements = split(/\//, $path);
     my $pathElementsSize = @pathElements;
 
     # Reducing one from configured array size and dividing by 2 to get path element size
-    my $configpathElementsSize = ($attributeDefList{$attrToConstruct}->simpleType->arrayDimension - 1) / 2;
+    my $configpathElementsSize = ($entityPathSimpleType->arrayDimension - 1) / 2;
 
     if ( $configpathElementsSize < $pathElementsSize )
     {
-        print "CRITICAL: The max path element size of $$attrToConstruct is $configpathElementsSize but the given path element size in PHYS_DEV_PATH attribute value[$phyOrAffpath] is $pathElementsSize\n";
+        print "CRITICAL: The max path element size is $configpathElementsSize but the given path element size in PHYS_DEV_PATH attribute value[$phyOrAffpath] is $pathElementsSize\n";
         return "";
     }
 
@@ -705,7 +716,6 @@ sub getBinaryFormatForPath
     }
     else
     {
-        print "CRITICAL: Invalid path type[$pathType] in given path [$phyOrAffpath]\n";
         return "";
     }
 

@@ -46,8 +46,8 @@ XMLTOHB_TARGET_MERGE_SCRIPT="updatetargetxml.pl"
 TEMP_DEFAULTS_XML="tempdefaults.xml"
 BMC_TEMP_DEFAULTS_XML="bmc_customized_ekb_attrs.xml"
 
-filter_attr="filter_AttributesList.lsv"
-filter_target="filter_TargetsList.lsv"
+filter_attr="filter_AttributesList.xml"
+filter_target="filter_TargetsList.xml"
 
 # Manually generated sources
 
@@ -141,13 +141,15 @@ fi
 
 # step 4: Get the list of all the ekb attribute info file names into
 # XMLTOHB_FAPIATTR_SOURCES
-LSV_FILE="${TARGETING_XMLTOHB_PROC_REL_PATH}/reqEkbAttrsXmlFileList.lsv"
-XMLTOHB_FAPIATTR_SOURCES=$(<"$LSV_FILE")
+XML_FILE="${TARGETING_XMLTOHB_PROC_REL_PATH}/ekbFileList.xml"
 
-XMLTOHB_FAPIATTR_SOURCES=""
-while read -r line; do
-    XMLTOHB_FAPIATTR_SOURCES+="$EKB/${line} "  # or "${line}.xml", etc.
-done < "$LSV_FILE"
+XMLTOHB_FAPIATTR_SOURCES=$(xmllint --xpath "/ekbFileList/file/@id" "$XML_FILE" \
+    | sed -E 's/id="([^"]+)"/\1\n/g' \
+    | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+    | sed "s|^|$EKB/|" \
+    | tr '\n' ' ' | sed 's/ *$//')
+
+echo "Files: $XMLTOHB_FAPIATTR_SOURCES"
 
 # step 5: Merge the contents of all the ekb attribute info file into
 # XMLTOHB_FAPI_XML
@@ -260,6 +262,17 @@ echo '<attributes>' | cat - ${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES} > tempFull &&
 echo '</attributes>' | cat ${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES} - > tempFull && \
     mv tempFull ${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}
 
+"$TARGETING_XMLTOHB_REL_PATH/expandTargetTypes.pl" \
+    --fromTgtXml "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES}" \
+    --filter-tgt-file "${TARGETING_XMLTOHB_PROC_REL_PATH}/$filter_target" \
+    --filter-attr-file "${TARGETING_XMLTOHB_PROC_REL_PATH}/$filter_attr" \
+    --outXml "${GENDIR}/${XMLTOHB_FULL_TARGET_TYPES_EXPANDED}" 
+
+# remove empty lines created because of filtering and removing the attributes
+#move it back to full target type file
+grep -v '^[[:space:]]*$' "$GENDIR/${XMLTOHB_FULL_TARGET_TYPES_EXPANDED}" > \
+    $GENDIR/${XMLTOHB_FULL_TARGET_TYPES}
+
 # trim leading whitespace if any
 XMLTOHB_MERGED_SOURCES="${XMLTOHB_MERGED_SOURCES#" "}"
 
@@ -328,6 +341,7 @@ for system_mrw_xml in $SYSTEMS_MRW_XML; do
         $GENDIR/${system_name}_bmc_mrw_filtered.xml
 
     final_merged_xml_file_name="${system_name/-MRW/}.xml"
+    dts_file_name="${system_name/-MRW/}.dts"
     echo "creating final merged file $final_merged_xml_file_name"
 
     # Step 15: Merge the contents of processed MRW output file, attributes
@@ -338,6 +352,16 @@ for system_mrw_xml in $SYSTEMS_MRW_XML; do
 
     if [ $? -ne 0 ]; then
         echo "${XMLTOHB_MERGE_SCRIPT} script failed to create ${final_merged_xml_file_name}"
+        exit 1
+    fi
+
+    #step 15: Create device tree from the 
+    "$TARGETING_XMLTOHB_REL_PATH/xmltoDTS.pl" \
+        --inXML ${GENDIR}/${final_merged_xml_file_name} \
+        --outDTS ${GENDIR}/${dts_file_name}
+    
+    if [ $? -ne 0 ]; then
+        echo "device tree generation failed\n"
         exit 1
     fi
 done

@@ -19,34 +19,10 @@ package processMrw_bmc;
  sub return_plugins
  {
      %::hwsvmrw_plugins = (
-         bmc_proc=>\&process_bmc_proc,
+         # we do not have any special processing, so empty method
      );
  }
  
- #Unit type per proc for single node
- my %maxInstance = (
-     "SYSREFCLKENDPT"=> 1,
-     "PCICLKENDPT" => 2,
-     "LPCREFCLKENDPT" => 1,
-     "NV"            => 6,
- );
- 
- #Unit type per proc for multinode
- my %maxInstanceMulti = (
- "SYSREFCLKENDPT"=> 2,
- "PCICLKENDPT" => 2,
- "LPCREFCLKENDPT" => 1,
- "NV"            => 6,
- );
- 
- #Number of individual Unit in all proc, Single Node
- my %procTotalInstance = (
-     "FSI"            => 1,
-     "PSI"            => 2,
-     "SYSREFCLKENDPT" => 8,
-     "PCICLKENDPT"  => 8,
-         );
-
 my %ocmb_device_path_method_registry = (
     "Rainier-2U-MRW.xml" => \&rainier_ocmb_device_paths,
     "Rainier-4U-MRW.xml" => \&rainier_ocmb_device_paths,
@@ -73,7 +49,6 @@ my %ocmb_device_path_method_registry = (
      my $sys_phys        = "";
      my $node_phys       = "";
      my $node_aff        = "";
-     my $proc_aff        = "";
      my $sys_pos         = 0;
      my $bmc             = -1;
      my $tpm             = -1;
@@ -129,7 +104,6 @@ my %ocmb_device_path_method_registry = (
              $proc++;
              #proc instance based on node
              $proc_instance_per_node++;
-             $proc_aff = "affinity:".$sys_phys."/node-$node"."/proc-$proc_instance_per_node";
              $targetObj->setAttribute($target, "EC", "0x10");
              $targetObj->setAttribute($target, "CHIP_ID", "0x20D4");
  
@@ -299,160 +273,6 @@ my %ocmb_device_path_method_registry = (
  
  }
  
-  my $fsiCnt = -1;
- sub process_bmc_proc
- {
-     my $multinode = -1 ;
-     my $node_ordinal_id = -1;
-     my $max_psi_per_node = 4;
-     my $psi_ordinal_id_incr = 2;
-     my ($targetObj, $target)    = @_;
- 
-     my ($slash , $sys, $node, $rambleoN, $proc) = split('/', $target);
- 
-     $sys = 0;
-     my $temptarget = $target;
-     my $temptype = $targetObj->getTargetType($target);
-     my $parent;
-     while($temptype ne "NODE")
-     {
-       $parent = $targetObj->getTargetParent($temptarget);
-       $temptype = $targetObj->getType($parent);
-       $temptarget = $parent;
-     }
-     $node_ordinal_id = $targetObj->getAttribute($parent, "ORDINAL_ID");
-     if(! $targetObj->isBadAttribute($temptarget,"POSITION"))
-     {
-        $node = $targetObj->getAttribute($temptarget,"POSITION");
-     }
-     else
-     {
-        $node = substr ($temptarget,-1);
-     }
-     if(! $targetObj->isBadAttribute($target,"POSITION"))
-     {
-       $proc = $targetObj->getAttribute($target,"POSITION");
-     }
-     else
-     {
-       if(! $targetObj->isBadAttribute($target,"CHIP_UNIT"))
-       {
-         $proc = $targetObj->getAttribute($target,"CHIP_UNIT");
-       }
-       else
-       {
-         die "\nNeither POSITION nor CHIP_UNIT available for $target\n";
-       }
-     }
- 
-     if($node > 0)
-     {
-         $multinode = 1;
-         $node=$node-1;
-     }
-     else
-     {
-         $multinode = 0;
-     }
- 
-     my $target_children  = $targetObj->getTargetChildren($target);
- 
-     if ($target_children eq "")
-     {
-         return "";
-     }
-     else
-     {
-         foreach my $child (@{ $targetObj->getTargetChildren($target) })
-         {
-             my $unit_ptr        = $targetObj->getTarget($child);
-             my $unit_type       = $targetObj->getType($child);
- 
-             if ($unit_type eq "FSI" )
-             {
-                 my $unit_type_id = $targetObj->getTargetType($child);
- 
-                 if ($unit_type_id eq "unit-fsi-slave" )
-                 {
- 
-                     my $src_target = ($targetObj->getTarget($child))->{CONNECTION}->{SOURCE}[0];
-                     my $src_target_type = $targetObj->getTargetType($src_target);
-                     if($src_target_type eq 'unit-fsi-master')
-                     {
-                         $fsiCnt++;
-                         push(@{$targetObj->{targeting}
-                             ->{SYS}[0]{NODES}[$node]{PROCS}[$proc]{$unit_type}},
-                         { 'KEY' => $child });
-                     }
-                 }
-             }
-             elsif ($unit_type eq "SYSREFCLKENDPT" || $unit_type eq "PCICLKENDPT" || $unit_type eq "LPCREFCLKENDPT")
-             {
-                  push(@{$targetObj->{targeting}
-                       ->{SYS}[0]{NODES}[$node]{PROCS}[$proc]{$unit_type}},
-                       { 'KEY' => $child });
- 
-             }
- 
-             # DUmp only for FSI AND PSI AND clock end points
-             if ($unit_type eq "PSI"  || $unit_type eq "FSI" ||
-                 $unit_type eq "SYSREFCLKENDPT" || $unit_type eq "PCICLKENDPT" || $unit_type eq "LPCREFCLKENDPT")
-             {
-             my $pos             = $targetObj->getAttribute($child, "CHIP_UNIT");
-             my $unit_pos        = $pos;
-             my $ordinal_id        = $pos;
- 
-             my $parent_affinity = $targetObj->getAttribute(
-                                   $targetObj->getTargetParent($child),"AFFINITY_PATH");
-             my $parent_physical = $targetObj->getAttribute(
-                                   $targetObj->getTargetParent($child),"PHYS_PATH");
- 
-             my $affinity_path   = $parent_affinity . "/" . lc $unit_type ."-". $unit_pos;
-             my $physical_path   = $parent_physical . "/" . lc $unit_type ."-". $unit_pos;
-             my $fapi_name       = $targetObj->getFapiName($unit_type, $node, $proc, $pos);
- 
-             #unique offset per system
-             my $offset = -1;
-             if($multinode == 1)
-             {
- 
-                 $offset = ($proc * $maxInstanceMulti{$unit_type}) + $pos;
- 
-             }
-             else
-             {
-                 $offset = ($proc * $maxInstance{$unit_type}) + $pos;
-             }
- 
-             if ($unit_type eq "PSI")
-             {
-                 # See iterateOverBmcTargets for a note about PSI links'
-                 # ordinal id computation. The algorithm used here is
-                 # uses the node ordinal id as the base, and to that is
-                 # added the processor ordinal id factored by the increment(2).
-                 # The +1 is because the first processor side link has the ordinal
-                 # id of 1.
-                 $ordinal_id = ($node_ordinal_id * $max_psi_per_node) +
-                               (($proc * $psi_ordinal_id_incr) + 1);
-             }
- 
-             $targetObj->{huid_idx}->{$unit_type} = $offset;
-             $targetObj->setHuid($child, $sys, $node);
-             $targetObj->setAttribute($child, "FAPI_NAME",       $fapi_name);
-             $targetObj->setAttribute($child, "PHYS_PATH",       $physical_path);
-             $targetObj->setAttribute($child, "AFFINITY_PATH",   $affinity_path);
-             $targetObj->setAttribute($child, "ORDINAL_ID",      $ordinal_id);
-             $targetObj->setAttribute($child, "FAPI_POS",        $offset);
-             $targetObj->setAttribute($child, "REL_POS",         $pos);
- 
-             process_bmc_proc($targetObj, $child);
-             }
-         }
-     }
- 
- 
- }
-
  sub everest_ocmb_device_paths {
     my ($proc_id, $ocmb_index) = @_;
     my %ocmb_port = (

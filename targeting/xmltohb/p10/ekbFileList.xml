@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ekbFileList>
+  <file id="chips/p10/procedures/xml/attribute_info/p10_clock_attributes.xml"/>
+  <file id="chips/p10/procedures/xml/attribute_info/p10_freq_attributes.xml"/>
+  <file id="chips/p10/procedures/xml/attribute_info/p10_ipl_attributes.xml"/>
+  <file id="chips/p10/procedures/xml/attribute_info/p10_nest_attributes.xml"/>
+  <file id="chips/p10/procedures/xml/attribute_info/p10_pervasive_attributes.xml"/>
+  <file id="chips/p10/procedures/xml/attribute_info/p10_runn_attributes.xml"/>
+  <file id="chips/p10/procedures/xml/attribute_info/p10_bars_attributes.xml"/>
+  <file id="chips/p10/procedures/xml/attribute_info/pm_plat_attributes.xml"/>
+  <file id="hwpf/fapi2/xml/attribute_info/unit_attributes.xml"/>
+  <file id="hwpf/fapi2/xml/attribute_info/common_attributes.xml"/>
+  <file id="hwpf/fapi2/xml/attribute_info/chip_attributes.xml"/>
+</ekbFileList>

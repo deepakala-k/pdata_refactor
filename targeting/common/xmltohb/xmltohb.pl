@@ -91,6 +91,9 @@ my $cfgBiosOutputFile = undef;
 my $MAX_4_BYTE_VALUE = 0xFFFFFFFF;
 my $buildBmc         = 0;
 
+my %allowed_attr_list;
+my $user_provided_attr_filter_is_active;
+
 GetOptions(
     "hb-xml-file:s"              => \$cfgHbXmlFile,
     "src-output-dir:s"           => \$cfgSrcOutputDir,
@@ -146,6 +149,15 @@ if ($cfgVerbose)
     print STDOUT "Non Sync Attributes file = $nonSyncAttribFile\n";
     print STDOUT "filter-attr-file = $filterAttrFile\n";
     print STDOUT "filter-target-file = $filterTargetFile\n";
+}
+
+if ($filterAttrFile)
+{
+    loadAllowedFilterList(
+        $filterAttrFile, \%allowed_attr_list,
+        "/allowedAttributes/attribute",
+        \$user_provided_attr_filter_is_active
+    );
 }
 
 ################################################################################
@@ -271,11 +283,7 @@ my %virtualAttrIds = ();
 # present in the set.Filter it before doing any operations.
 # $allAttributes to contain the actual list
 
-# TODO, need to check if $allAttributes also needs to be filtered??
-if ( $filterAttrFile ne "" )
-{
-    $attributes = filterAttributes( $attributes, $filterAttrFile );
-}
+$attributes = filterAttributes( $attributes, $filterAttrFile );
 
 for my $attr ( reverse 0 .. ( ( scalar @{ $attributes->{attribute} } ) - 1 ) )
 {
@@ -6167,23 +6175,20 @@ sub mergeComplexAttributeFields
 
 sub loadAllowedFilterList
 {
-    my ( $filter_file, $allowed_list_ref, $filter_is_active_ref ) = @_;
+    my ( $xmlFile, $allowedList, $pathToLook, $filter_is_active_ref ) = @_;
 
-    if ($filter_file)
+    my $parser = XML::LibXML->new();
+    my $doc    = $parser->parse_file($xmlFile);
+
+    foreach my $attrNode ( $doc->findnodes($pathToLook) )
     {
-        open my $fh, '<', $filter_file or die "Cannot open $filter_file: $!";
-        while ( my $line = <$fh> )
+        my $id = $attrNode->findvalue('@id');
+        if ( $id ne "" )
         {
-            chomp $line;
-            next if $line =~ /^\s*#/;    # skip comment lines
-            next if $line eq '';         # skip empty lines
-            $allowed_list_ref->{$line} = 1;
+            $allowedList->{$id} = 1;
         }
-        close $fh;
     }
-
-    # set the scalar behind the reference
-    $$filter_is_active_ref = scalar( keys %$allowed_list_ref ) > 0;
+    $$filter_is_active_ref = scalar( keys %$allowedList ) > 0;
 }
 
 ################################################################################
@@ -6224,11 +6229,6 @@ sub loadAllowedFilterList
 sub getTargetAttributes
 {
     my ( $type, $attributes, $attrhasha ) = @_;
-
-    my %allowed_attr_list;
-    my $user_provided_attr_filter_is_active;
-
-    loadAllowedFilterList( $filterAttrFile, \%allowed_attr_list, \$user_provided_attr_filter_is_active );
 
     foreach my $targetType ( @{ $attributes->{targetType} } )
     {
@@ -8574,26 +8574,17 @@ sub generateXMLforSM
 
 sub filterAttributes
 {
-    my ( $attr_hash, $lsv_file ) = @_;
+    my ( $attr_hash, $filterAttrFile ) = @_;
 
     # Read allowed IDs from .lsv into a hash
     my %allowed;
-    open my $fh, '<', $lsv_file or die "Cannot open $lsv_file: $!";
-    while ( my $line = <$fh> )
-    {
-        chomp $line;
-        next if $line =~ /^\s*#/;    # skip comment lines
-        next if $line eq '';         # skip empty lines
-        $allowed{$line} = 1;
-    }
-    close $fh;
+    my $filter_active;
 
-    # Filter the 'attribute' array in-place
-    if ( exists $attr_hash->{attribute} && ref $attr_hash->{attribute} eq 'ARRAY' )
-    {
-        my @filtered = grep { exists $_->{id} && $allowed{ $_->{id} } } @{ $attr_hash->{attribute} };
+    loadAllowedFilterList( $filterAttrFile, \%allowed, "/allowedAttributes/attribute", \$filter_active );
 
-        $attr_hash->{attribute} = \@filtered;
+    if ( $filter_active && ref $attr_hash->{attribute} eq 'ARRAY' )
+    {
+        $attr_hash->{attribute} = [ grep { exists $_->{id} && $allowed{ $_->{id} } } @{ $attr_hash->{attribute} } ];
     }
 
     # Return filtered hashref

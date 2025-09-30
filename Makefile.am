@@ -126,10 +126,5 @@ uninstall-gen_dt:
 	rm -f $(DESTDIR)$(datadir)/*.dtb
 
 gen_dt:
-	$(AUTO_GEN_V)$(MKDIR_P) $(gen_dtdir) && \
-	DEBUG=$(V) TARGET_PROC=$(CHIP) $(srcdir)/scripts/dt_generate.sh dts $(gen_dtdir) && \
-	TARGET_PROC=$(CHIP) $(srcdir)/targeting/xmltohb/xmltobmc.sh && \
-	( for i in $(gen_dtdir)/*.dts; do \
-		$(DTC) -I dts -O dtb "$$i" > "$${i%.dts}.dtb" || exit 1; \
-	done ) || ( $(MAKE) $(AM_MAKEFLAGS) clean-gen_dt; exit 1 )
+	DEBUG=$(V) TARGET_PROC=$(CHIP) $(srcdir)/targeting/xmltohb/xmltobmc.sh
 endif

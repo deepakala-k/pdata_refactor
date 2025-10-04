@@ -111,4 +111,5 @@
   <attribute id="CLASS"/>
   <attribute id="HW_ACCESS_PTR"/>
   <attribute id="FREQ_PAU_VPD_MHZ"/>
+  <attribute id="HW543384_WAR_MODE"/>
 </allowedAttributes>

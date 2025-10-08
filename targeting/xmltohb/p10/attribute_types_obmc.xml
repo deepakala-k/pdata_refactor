@@ -196,6 +196,7 @@
     </simpleType>
     <writeable/>
   </attribute>
+  
   <attribute>
     <description>Hardware access pointer</description>
     <id>HW_ACCESS_PTR</id>
@@ -208,4 +209,98 @@
     </simpleType>
     <writeable/>
   </attribute>
+  <attribute>
+    <description>
+      Plat fused core attribute to enable writeable property
+    </description>
+    <id>FUSED_CORE_MODE_WRITEABLE</id>
+    <persistency>non-volatile</persistency>
+    <readable/>
+    <writeable/>
+    <simpleType>
+      <uint8_t>
+        <default>CORE_FUSED</default>
+      </uint8_t>
+    </simpleType>
+    <hwpfToHbAttrMap>
+      <id>ATTR_FUSED_CORE_MODE</id>
+      <macro>DIRECT</macro>
+    </hwpfToHbAttrMap>
+  </attribute>
+  <enumerationType>
+  <description>Summarizes the fused status of cores. This is same for all p10 chips
+    in the system. If a core is in a fused state, attribute should read 1
+    else zero. It needs to be populated during ipl but before istep 15.</description>
+  <enumerator>
+    <name>CORE_UNFUSED</name>
+    <value>0x0</value>
+  </enumerator>
+  <enumerator>
+    <name>CORE_FUSED</name>
+    <value>0x1</value>
+  </enumerator>
+  <id>FUSED_CORE_MODE_WRITEABLE</id>
+</enumerationType>
+
+<enumerationType>
+  <description>Select Primary or Backup Boot SEEPROM</description>
+  <enumerator>
+    <name>PRIMARY</name>
+    <value>0x0</value>
+  </enumerator>
+  <enumerator>
+    <name>SECONDARY</name>
+    <value>0x1</value>
+  </enumerator>
+  <id>BACKUP_SEEPROM_SELECT_WRITEABLE</id>
+</enumerationType>
+<attribute>
+  <description>
+    Select Primary or Backup Boot SEEPROM Writeable property
+  </description>
+  <id>BACKUP_SEEPROM_SELECT_WRITEABLE</id>
+  <persistency>non-volatile</persistency>
+  <readable/>
+  <writeable/>
+  <simpleType>
+    <uint8_t>
+      <default>PRIMARY</default>
+    </uint8_t>
+  </simpleType>
+  <hwpfToHbAttrMap>
+    <id>ATTR_BACKUP_SEEPROM_SELECT</id>
+    <macro>DIRECT</macro>
+  </hwpfToHbAttrMap>
+</attribute>
+
+<enumerationType>
+  <description>Select Primary or Backup Measurement SEEPROM</description>
+  <enumerator>
+    <name>PRIMARY</name>
+    <value>0x0</value>
+  </enumerator>
+  <enumerator>
+    <name>SECONDARY</name>
+    <value>0x1</value>
+  </enumerator>
+  <id>BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE</id>
+</enumerationType>
+<attribute>
+  <description>
+    Select Primary or Backup Boot SEEPROM Writeable property
+  </description>
+  <id>BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE</id>
+  <persistency>non-volatile</persistency>
+  <readable/>
+  <writeable/>
+  <simpleType>
+    <uint8_t>
+      <default>PRIMARY</default>
+    </uint8_t>
+  </simpleType>
+  <hwpfToHbAttrMap>
+    <id>ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT</id>
+    <macro>DIRECT</macro>
+  </hwpfToHbAttrMap>
+</attribute>
 </attributes>

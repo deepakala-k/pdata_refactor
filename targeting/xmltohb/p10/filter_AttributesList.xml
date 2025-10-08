@@ -20,7 +20,7 @@
   <attribute id="PCI1_REFCLOCK_RCVR_TERM"/>
   <attribute id="SYS0_REFCLOCK_RCVR_TERM"/>
   <attribute id="SYS1_REFCLOCK_RCVR_TERM"/>
-  <attribute id="BACKUP_SEEPROM_SELECT"/>
+  <attribute id="BACKUP_SEEPROM_SELECT_WRITEABLE"/>
   <attribute id="BOOT_FLAGS"/>
   <attribute id="CHIP_CONTAINED_BACKING_CACHES_VEC"/>
   <attribute id="CLOCK_MUX_IOHS_LCPLL_INPUT"/>
@@ -60,9 +60,9 @@
   <attribute id="NAME"/>
   <attribute id="SMF_CONFIG"/>
   <attribute id="SECURITY_MODE"/>
-  <attribute id="FUSED_CORE_MODE"/>
+  <attribute id="FUSED_CORE_MODE_WRITEABLE"/>
   <attribute id="SPI_BUS_DIV_REF"/>
-  <attribute id="BACKUP_MEASUREMENT_SEEPROM_SELECT"/>
+  <attribute id="BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE"/>
   <attribute id="REL_POS"/>
   <attribute id="BOOT_PAU_DPLL_BYPASS"/>
   <attribute id="PCI_PLL_BUCKET"/>

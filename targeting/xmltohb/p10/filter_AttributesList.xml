@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <allowedAttributes>
+<!-- fapi attributes -->
   <attribute id="CP_REFCLOCK_SELECT"/>
   <attribute id="CLOCK_MUX0A_RCS_PLL_INPUT"/>
   <attribute id="CLOCK_MUX0B_RCS_PLL_INPUT"/>
@@ -20,7 +21,6 @@
   <attribute id="PCI1_REFCLOCK_RCVR_TERM"/>
   <attribute id="SYS0_REFCLOCK_RCVR_TERM"/>
   <attribute id="SYS1_REFCLOCK_RCVR_TERM"/>
-  <attribute id="BACKUP_SEEPROM_SELECT_WRITEABLE"/>
   <attribute id="BOOT_FLAGS"/>
   <attribute id="CHIP_CONTAINED_BACKING_CACHES_VEC"/>
   <attribute id="CLOCK_MUX_IOHS_LCPLL_INPUT"/>
@@ -60,9 +60,7 @@
   <attribute id="NAME"/>
   <attribute id="SMF_CONFIG"/>
   <attribute id="SECURITY_MODE"/>
-  <attribute id="FUSED_CORE_MODE_WRITEABLE"/>
   <attribute id="SPI_BUS_DIV_REF"/>
-  <attribute id="BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE"/>
   <attribute id="REL_POS"/>
   <attribute id="BOOT_PAU_DPLL_BYPASS"/>
   <attribute id="PCI_PLL_BUCKET"/>
@@ -74,11 +72,21 @@
   <attribute id="HW543822_WAR_MODE"/>
   <attribute id="SYS_CLK_NE_TERMINATION_SITE"/>
   <attribute id="SYS_CLK_NE_TERMINATION_STRENGTH"/>
-  <attribute id="CHIP_EC_FEATURE_NE_TERMINATION"/>
   <attribute id="TPM_SPI_BUS_DIV"/>
   <attribute id="ECO_MODE"/>
   <attribute id="AVSBUS_BUSNUM"/>
   <attribute id="AVSBUS_RAIL"/>
+  <attribute id="ISTEP_MODE"/>
+  <attribute id="ALLOW_ATTR_OVERRIDES"/>
+  <attribute id="NO_XSCOM_ENFORCEMENT"/>
+  <attribute id="FREQ_PAU_VPD_MHZ"/>
+  <attribute id="HW543384_WAR_MODE"/>
+
+<!-- Plat attributes -->
+  <attribute id="BACKUP_SEEPROM_SELECT_WRITEABLE"/>
+  <attribute id="FUSED_CORE_MODE_WRITEABLE"/>
+  <attribute id="BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE"/>
+  <attribute id="CHIP_EC_FEATURE_NE_TERMINATION"/>
   <attribute id="FUSED_CORE_OPTION"/>
   <attribute id="DISABLE_SECURITY"/>
   <attribute id="HWAS_STATE"/>
@@ -86,13 +94,10 @@
   <attribute id="MRU_ID"/>
   <attribute id="EQ_GARD"/>
   <attribute id="PROC_MASTER_TYPE"/>
-  <attribute id="ISTEP_MODE"/>
   <attribute id="TYPE"/>
   <attribute id="FAPI_NAME"/>
   <attribute id="CHIPLET_ID"/>
   <attribute id="LOCATION_CODE"/>
-  <attribute id="ALLOW_ATTR_OVERRIDES"/>
-  <attribute id="NO_XSCOM_ENFORCEMENT"/>
   <attribute id="POSITION"/>
   <attribute id="SBEFIFO_DEVICE_PATH"/>
   <attribute id="DIRECT_ACCESS_DEVICE_PATH"/>
@@ -110,6 +115,4 @@
   <attribute id="I2C_PARENT_PHYS_PATH"/>
   <attribute id="CLASS"/>
   <attribute id="HW_ACCESS_PTR"/>
-  <attribute id="FREQ_PAU_VPD_MHZ"/>
-  <attribute id="HW543384_WAR_MODE"/>
 </allowedAttributes>

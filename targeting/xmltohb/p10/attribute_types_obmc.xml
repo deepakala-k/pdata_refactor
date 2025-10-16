@@ -15,9 +15,10 @@
     <readable/>
     <writeable/>
   </attribute>
+
   <attribute>
-    <description>Capturing EQ Gard value</description>
     <id>EQ_GARD</id>
+    <description>Capturing EQ Gard value</description>
     <no_export/>
     <persistency>non-volatile</persistency>
     <readable/>
@@ -26,32 +27,22 @@
     </simpleType>
     <writeable/>
   </attribute>
+
   <attribute>
-    <description>Physical hierarchical path to the target. Used for device tree purpose, due to existing PHYS_PATH attribute type is in EntityPath(class) which is not supported by device tree.</description>
-    <id>PHYS_DEV_PATH</id>
+    <id>FSI_DEVICE_PATH</id>
+    <description>FSI device path for cfam operations</description>
+    <persistency>non-volatile</persistency>
+    <readable/>
     <simpleType>
       <string>
         <sizeInclNull>64</sizeInclNull>
       </string>
     </simpleType>
-    <persistency>non-volatile</persistency>
-    <readable/>
   </attribute>
 
   <attribute>
-    <description>FSI device path for cfam operations</description>
-    <id>FSI_DEVICE_PATH</id>
-    <persistency>non-volatile</persistency>
-    <readable/>
-    <simpleType>
-      <string>
-        <sizeInclNull>64</sizeInclNull>
-      </string>
-    </simpleType>
-  </attribute>
-  <attribute>
-    <description>FSI port value</description>
     <id>FSI_PORT</id>
+    <description>FSI port value</description>
     <persistency>non-volatile</persistency>
     <readable/>
     <simpleType>
@@ -60,9 +51,10 @@
       </uint32_t>
     </simpleType>
   </attribute>
+
   <attribute>
-    <description>Direct access path for scom operations</description>
     <id>DIRECT_ACCESS_DEVICE_PATH</id>
+    <description>Direct access path for scom operations</description>
     <persistency>non-volatile</persistency>
     <readable/>
     <simpleType>
@@ -71,9 +63,10 @@
       </string>
     </simpleType>
   </attribute>
+
   <attribute>
-    <description>Sbefifo device path for scom operations</description>
     <id>SBEFIFO_DEVICE_PATH</id>
+    <description>Sbefifo device path for scom operations</description>
     <persistency>non-volatile</persistency>
     <readable/>
     <simpleType>
@@ -82,6 +75,7 @@
       </string>
     </simpleType>
   </attribute>
+
   <enumerationType>
     <description>
             The functional state of the system oscillators.
@@ -105,6 +99,7 @@
     <id>SYS_CLOCK_DECONFIG_STATE</id>
   </enumerationType>
   <attribute>
+    <id>SYS_CLOCK_DECONFIG_STATE</id>
     <description>
             The state of the system clocks. This attribute is set by
             Hostboot and read by the BMC on reconfig loops so that it can
@@ -112,7 +107,6 @@
             SYS_CLOCK_DECONFIG_STATE for the possible values of this
             attribute.
         </description>
-    <id>SYS_CLOCK_DECONFIG_STATE</id>
     <persistency>non-volatile</persistency>
     <readable/>
     <writeable/>
@@ -123,12 +117,13 @@
       </enumeration>
     </simpleType>
   </attribute>
+
   <attribute>
+    <id>I2C_ADDRESS</id>
     <description>The I2C Address of the target to use in the device tree
             reg property. It can be added to target that wants under
             the respective I2C device tree target.
         </description>
-    <id>I2C_ADDRESS</id>
     <persistency>non-volatile</persistency>
     <readable/>
     <simpleType>
@@ -137,13 +132,14 @@
       </uint8_t>
     </simpleType>
   </attribute>
+
   <attribute>
+    <id>I2C_PORT</id>
     <description>The I2C Port of the target to use in the device tree along
             with I2C device tree target node name. For example, i2c-N.
             It can be added to target that wants under the respective I2C
             device tree target.
         </description>
-    <id>I2C_PORT</id>
     <persistency>non-volatile</persistency>
     <readable/>
     <simpleType>
@@ -152,12 +148,13 @@
       </uint8_t>
     </simpleType>
   </attribute>
+
   <attribute>
+    <id>I2C_PARENT_PHYS_PATH</id>
     <description>The I2C target parent physical path. Used for adding the
             I2C target under the respective parent. It can be added to target
             that wants under the respective I2C device tree target.
         </description>
-    <id>I2C_PARENT_PHYS_PATH</id>
     <persistency>non-volatile</persistency>
     <readable/>
     <simpleType>
@@ -166,7 +163,9 @@
       </string>
     </simpleType>
   </attribute>
+
   <enumerationType>
+    <id>HW_ACCESS_METHOD</id>
     <default>SBEFIFO</default>
     <description>
             Enumeration indicating the current backend sbefifo/direct access
@@ -179,11 +178,10 @@
       <name>DIRECT_ACCESS</name>
       <value>1</value>
     </enumerator>
-    <id>HW_ACCESS_METHOD</id>
   </enumerationType>
   <attribute>
-    <description>Type of the current hardware access method</description>
     <id>HW_ACCESS_METHOD</id>
+    <description>Type of the current hardware access method</description>
     <hasStringConversion/>
     <no_export/>
     <persistency>volatile</persistency>
@@ -198,8 +196,8 @@
   </attribute>
   
   <attribute>
-    <description>Hardware access pointer</description>
     <id>HW_ACCESS_PTR</id>
+    <description>Hardware access pointer</description>
     <no_export/>
     <persistency>volatile</persistency>
     <readable/>
@@ -209,11 +207,26 @@
     </simpleType>
     <writeable/>
   </attribute>
+
+  <enumerationType>
+    <id>FUSED_CORE_MODE_WRITEABLE</id>
+    <description>Summarizes the fused status of cores. This is same for all p10 chips
+      in the system. If a core is in a fused state, attribute should read 1
+      else zero. It needs to be populated during ipl but before istep 15.</description>
+    <enumerator>
+      <name>CORE_UNFUSED</name>
+      <value>0x0</value>
+    </enumerator>
+    <enumerator>
+      <name>CORE_FUSED</name>
+      <value>0x1</value>
+    </enumerator>
+  </enumerationType>
   <attribute>
+    <id>FUSED_CORE_MODE_WRITEABLE</id>
     <description>
       Plat fused core attribute to enable writeable property
     </description>
-    <id>FUSED_CORE_MODE_WRITEABLE</id>
     <persistency>non-volatile</persistency>
     <readable/>
     <writeable/>
@@ -227,80 +240,67 @@
       <macro>DIRECT</macro>
     </hwpfToHbAttrMap>
   </attribute>
+
   <enumerationType>
-  <description>Summarizes the fused status of cores. This is same for all p10 chips
-    in the system. If a core is in a fused state, attribute should read 1
-    else zero. It needs to be populated during ipl but before istep 15.</description>
-  <enumerator>
-    <name>CORE_UNFUSED</name>
-    <value>0x0</value>
-  </enumerator>
-  <enumerator>
-    <name>CORE_FUSED</name>
-    <value>0x1</value>
-  </enumerator>
-  <id>FUSED_CORE_MODE_WRITEABLE</id>
-</enumerationType>
+    <id>BACKUP_SEEPROM_SELECT_WRITEABLE</id>
+    <description>Select Primary or Backup Boot SEEPROM</description>
+    <enumerator>
+      <name>PRIMARY</name>
+      <value>0x0</value>
+    </enumerator>
+    <enumerator>
+      <name>SECONDARY</name>
+      <value>0x1</value>
+    </enumerator>
+  </enumerationType>
+  <attribute>
+    <id>BACKUP_SEEPROM_SELECT_WRITEABLE</id>
+    <description>
+      Select Primary or Backup Boot SEEPROM Writeable property
+    </description>
+    <persistency>non-volatile</persistency>
+    <readable/>
+    <writeable/>
+    <simpleType>
+      <uint8_t>
+        <default>PRIMARY</default>
+      </uint8_t>
+    </simpleType>
+    <hwpfToHbAttrMap>
+      <id>ATTR_BACKUP_SEEPROM_SELECT</id>
+      <macro>DIRECT</macro>
+    </hwpfToHbAttrMap>
+  </attribute>
 
-<enumerationType>
-  <description>Select Primary or Backup Boot SEEPROM</description>
-  <enumerator>
-    <name>PRIMARY</name>
-    <value>0x0</value>
-  </enumerator>
-  <enumerator>
-    <name>SECONDARY</name>
-    <value>0x1</value>
-  </enumerator>
-  <id>BACKUP_SEEPROM_SELECT_WRITEABLE</id>
-</enumerationType>
-<attribute>
-  <description>
-    Select Primary or Backup Boot SEEPROM Writeable property
-  </description>
-  <id>BACKUP_SEEPROM_SELECT_WRITEABLE</id>
-  <persistency>non-volatile</persistency>
-  <readable/>
-  <writeable/>
-  <simpleType>
-    <uint8_t>
-      <default>PRIMARY</default>
-    </uint8_t>
-  </simpleType>
-  <hwpfToHbAttrMap>
-    <id>ATTR_BACKUP_SEEPROM_SELECT</id>
-    <macro>DIRECT</macro>
-  </hwpfToHbAttrMap>
-</attribute>
+  <enumerationType>
+    <id>BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE</id>
+    <description>Select Primary or Backup Measurement SEEPROM</description>
+    <enumerator>
+      <name>PRIMARY</name>
+      <value>0x0</value>
+    </enumerator>
+    <enumerator>
+      <name>SECONDARY</name>
+      <value>0x1</value>
+    </enumerator>
+  </enumerationType>
+  <attribute>
+    <id>BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE</id>
+    <description>
+      Select Primary or Backup Boot SEEPROM Writeable property
+    </description>
+    <persistency>non-volatile</persistency>
+    <readable/>
+    <writeable/>
+    <simpleType>
+      <uint8_t>
+        <default>PRIMARY</default>
+      </uint8_t>
+    </simpleType>
+    <hwpfToHbAttrMap>
+      <id>ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT</id>
+      <macro>DIRECT</macro>
+    </hwpfToHbAttrMap>
+  </attribute>
 
-<enumerationType>
-  <description>Select Primary or Backup Measurement SEEPROM</description>
-  <enumerator>
-    <name>PRIMARY</name>
-    <value>0x0</value>
-  </enumerator>
-  <enumerator>
-    <name>SECONDARY</name>
-    <value>0x1</value>
-  </enumerator>
-  <id>BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE</id>
-</enumerationType>
-<attribute>
-  <description>
-    Select Primary or Backup Boot SEEPROM Writeable property
-  </description>
-  <id>BACKUP_MEASUREMENT_SEEPROM_SELECT_WRITEABLE</id>
-  <persistency>non-volatile</persistency>
-  <readable/>
-  <writeable/>
-  <simpleType>
-    <uint8_t>
-      <default>PRIMARY</default>
-    </uint8_t>
-  </simpleType>
-  <hwpfToHbAttrMap>
-    <id>ATTR_BACKUP_MEASUREMENT_SEEPROM_SELECT</id>
-    <macro>DIRECT</macro>
-  </hwpfToHbAttrMap>
-</attribute>
 </attributes>

@@ -1,16 +1,20 @@
 <?xml version="1.0"?>
 <attributes>
+
   <targetTypeExtension>
+    <id>sys</id>
+    <parent>base</parent>
     <attribute>
       <id>ALLOW_ATTR_OVERRIDES</id>
     </attribute>
     <attribute>
       <id>NO_XSCOM_ENFORCEMENT</id>
     </attribute>
-    <id>sys</id>
-    <parent>base</parent>
   </targetTypeExtension>
+
   <targetTypeExtension>
+    <id>sys-sys-power10</id>
+    <parent>sys</parent>
     <attribute>
       <id>DISABLE_SECURITY</id>
     </attribute>
@@ -20,10 +24,11 @@
     <attribute>
       <id>SECURE_VERSION_NUM</id>
     </attribute>
-    <id>sys-sys-power10</id>
-    <parent>sys</parent>
   </targetTypeExtension>
+
   <targetTypeExtension>
+    <id>chip-processor</id>
+    <parent>chip</parent>
     <attribute>
       <id>EQ_GARD</id>
     </attribute>
@@ -45,32 +50,35 @@
     <attribute>
       <id>HW_ACCESS_PTR</id>
     </attribute>
-    <id>chip-processor</id>
-    <parent>chip</parent>
   </targetTypeExtension>
+
   <targetTypeExtension>
+    <id>chip</id>
+    <parent>base</parent>
     <attribute>
       <id>LOCATION_CODE</id>
     </attribute>
-    <id>chip</id>
-    <parent>base</parent>
   </targetTypeExtension>
+
   <targetTypeExtension>
+    <id>unit-core</id>
+    <parent>unit</parent>
     <attribute>
       <id>MASTER_CORE</id>
     </attribute>
-    <id>unit-core</id>
-    <parent>unit</parent>
   </targetTypeExtension>
+
   <targetTypeExtension>
+    <id>unit</id>
+    <parent>base</parent>
     <attribute>
       <id>CHIPLET_ID</id>
     </attribute>
-    <id>unit</id>
-    <parent>base</parent>
   </targetTypeExtension>
+
   <targetTypeExtension>
     <id>chip-ocmb</id>
+    <parent>chip</parent>
     <attribute>
       <id>SBEFIFO_DEVICE_PATH</id>
     </attribute>
@@ -83,13 +91,14 @@
     <attribute>
       <id>HW_ACCESS_PTR</id>
     </attribute>
-    <parent>chip</parent>
   </targetTypeExtension>
+
   <targetTypeExtension>
+    <id>chip-bmc-ast2600</id>
+    <parent>sp</parent>
     <attribute>
       <id>LOCATION_CODE</id>
     </attribute>
-    <id>chip-bmc-ast2600</id>
-    <parent>sp</parent>
   </targetTypeExtension>
+
 </attributes>
